@@ -48,7 +48,7 @@ def require_login():
     if not SITE_USERNAME or not SITE_PASSWORD:
         # Auth not configured (e.g. running locally without the env vars set)
         return
-    if request.endpoint in ("login", "static"):
+    if request.endpoint in ("login", "static", "login_v2"):
         return
     if not session.get("authed"):
         return redirect(url_for("login", next=request.path))
@@ -1383,6 +1383,292 @@ def build_top_drivers(limit=5):
 @app.route("/roadmap")
 def roadmap():
     return render_template("roadmap.html", active_tab="roadmap", watchlist=build_watchlist())
+
+
+# ---------------------------------------------------------------------------
+# "v2" concept preview — Overview / Claims / Driver risk / Sign-in rebuilt in
+# the narrative visual language from the Aster-concept.html mockup Steve
+# shared, but wired to the same real database and SAMPLE_DRIVERS data as the
+# rest of this app rather than the mockup's own fictional dataset. Kept on
+# separate -v2 routes/templates so it sits alongside the live pages for
+# comparison rather than replacing them.
+# ---------------------------------------------------------------------------
+V2_CLIENT_NAME = "Acme Fleet Services"
+
+# Which claim causes are substantially within a driver's control (used to
+# split the Claims-v2 cause chart into trainable vs largely-not, the same
+# distinction the concept mockup draws).
+CAUSE_TRAINABLE = {
+    "Manoeuvring / Reversing Damage": True,
+    "RTC - Own Fault": True,
+    "RTC - Split Liability": True,
+    "RTC - Third Party at Fault": False,
+    "Windscreen / Glass": False,
+    "Public Liability - Property Damage": False,
+    "Vandalism / Malicious Damage": False,
+    "Goods in Transit": False,
+    "Public Liability - Third Party Injury": False,
+    "Fire": False,
+    "Employers' Liability": False,
+    "Theft / Attempted Theft": False,
+}
+FAULT_ORDER = ["Fault", "Split", "Non-Fault", "Not Yet Determined"]
+V2_TIER_LABEL = {"high": "Review", "med": "Monitor", "low": "Good"}
+V2_LADDER = ["Monitor", "Coach", "Assess", "Restrict duties", "Review engagement"]
+V2_STEP_INDEX = {"low": 0, "med": 1, "high": 2}
+
+
+def build_v2_claims_payload(conn):
+    as_of = as_of_today(conn)
+    rows_db = conn.execute("SELECT * FROM claims").fetchall()
+
+    loss_ratio_meta = get_meta(conn, "loss_ratio", {}) or {}
+    labels = loss_ratio_meta.get("labels", [])
+    premiums = loss_ratio_meta.get("earned_premium", [])
+    incurreds = loss_ratio_meta.get("incurred", [])
+    lrs = loss_ratio_meta.get("loss_ratio", [])
+    target = loss_ratio_meta.get("target", 65.0)
+    years = [
+        {
+            "label": lbl,
+            "premium": premiums[i] if i < len(premiums) else 0,
+            "incurred": incurreds[i] if i < len(incurreds) else 0,
+            "lr": lrs[i] if i < len(lrs) else 0,
+            "target": target,
+        }
+        for i, lbl in enumerate(labels)
+    ]
+
+    total_claims = len(rows_db)
+    total_incurred = sum(r["incurred"] or 0 for r in rows_db)
+    open_claims = sum(1 for r in rows_db if not r["closed"])
+    closed_claims = total_claims - open_claims
+    avg_cost = (total_incurred / total_claims) if total_claims else 0
+
+    depots = sorted({r["depot"] for r in rows_db})
+    vehicle_counts = {
+        r["depot"]: r["c"]
+        for r in conn.execute(
+            "SELECT depot, COUNT(*) c FROM vehicles WHERE status='On cover' GROUP BY depot"
+        ).fetchall()
+    }
+
+    depot_agg = {}
+    for r in rows_db:
+        agg = depot_agg.setdefault(r["depot"], {"claims": 0, "incurred": 0.0})
+        agg["claims"] += 1
+        agg["incurred"] += r["incurred"] or 0
+    depot_agg_list = sorted(
+        (
+            {"depot": d, "claims": v["claims"], "incurred": v["incurred"], "vehicles": vehicle_counts.get(d, 0)}
+            for d, v in depot_agg.items()
+        ),
+        key=lambda x: x["claims"], reverse=True,
+    )
+
+    cause_agg = {}
+    for r in rows_db:
+        agg = cause_agg.setdefault(r["cause"], {"count": 0, "incurred": 0.0})
+        agg["count"] += 1
+        agg["incurred"] += r["incurred"] or 0
+    causes = sorted(
+        (
+            {"cause": c, "count": v["count"], "incurred": v["incurred"], "trainable": CAUSE_TRAINABLE.get(c, False)}
+            for c, v in cause_agg.items()
+        ),
+        key=lambda x: x["count"], reverse=True,
+    )
+
+    fault_agg = {}
+    for r in rows_db:
+        f = r["fault"] or "Not Yet Determined"
+        fault_agg[f] = fault_agg.get(f, 0) + 1
+    fault_labels = [f for f in FAULT_ORDER if f in fault_agg] + [f for f in fault_agg if f not in FAULT_ORDER]
+    fault = [{"label": f, "count": fault_agg[f]} for f in fault_labels]
+
+    status_groups = {"Open": 0, "Closed": 0, "Litigated": 0}
+    for r in rows_db:
+        s = r["status"] or ""
+        key = "Open" if s.startswith("Open") else ("Litigated" if s.startswith("Litigated") else "Closed")
+        status_groups[key] += 1
+    status = [{"label": k, "count": v} for k, v in status_groups.items()]
+
+    # Trailing 12 months of claim volume, by loss_date.
+    month_keys = []
+    y0, m0 = as_of.year, as_of.month
+    for i in range(11, -1, -1):
+        y, m = y0, m0 - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        month_keys.append((y, m))
+    month_labels, month_counts = [], []
+    for (y, m) in month_keys:
+        cnt = sum(1 for r in rows_db if r["loss_date"] and int(r["loss_date"][:4]) == y and int(r["loss_date"][5:7]) == m)
+        month_labels.append(date(y, m, 1).strftime("%b %y"))
+        month_counts.append(cnt)
+
+    # Trailing 16 Monday-start weeks of claims notified, by loss_date.
+    this_monday = as_of - timedelta(days=as_of.weekday())
+    week_labels, week_counts = [], []
+    for i in range(15, -1, -1):
+        ws = this_monday - timedelta(weeks=i)
+        we = ws + timedelta(days=6)
+        cnt = sum(1 for r in rows_db if r["loss_date"] and ws.isoformat() <= r["loss_date"] <= we.isoformat())
+        week_labels.append(ws.strftime("%-d %b"))
+        week_counts.append(cnt)
+
+    rows = []
+    for r in rows_db:
+        loss_date = r["loss_date"]
+        dt = datetime.strptime(loss_date, "%Y-%m-%d").date() if loss_date else None
+        rows.append({
+            "ref": r["ref"], "depot": r["depot"],
+            "lossDate": loss_date, "dateLabel": dt.strftime("%d %b %y") if dt else "—",
+            "sortDate": int(dt.strftime("%Y%m%d")) if dt else 0,
+            "vehicleType": r["vehicle_type"], "cause": r["cause"],
+            "fault": r["fault"] or "Not Yet Determined", "status": r["status"],
+            "incurred": r["incurred"] or 0, "paid": r["paid"] or 0, "reserve": r["reserve"] or 0,
+            "ownDamage": r["own_damage"], "ageBand": r["driver_age_band"],
+            "daysOpen": r["days_open"] or 0, "closeDate": r["close_date"], "policyYear": r["policy_year"],
+        })
+
+    return {
+        "client": V2_CLIENT_NAME, "asOf": as_of.strftime("%d %b %Y"),
+        "depots": depots, "policyYears": labels, "faultLabels": fault_labels,
+        "lossRatio": {"years": years, "target": target},
+        "totals": {
+            "totalClaims": total_claims, "totalIncurred": total_incurred,
+            "openClaims": open_claims, "closedClaims": closed_claims, "avgCost": avg_cost,
+            "overallLR": loss_ratio_meta.get("overall_loss_ratio"),
+            "currentLR": lrs[-1] if lrs else None, "priorLR": lrs[-2] if len(lrs) > 1 else None,
+            "currentPY": labels[-1] if labels else None, "priorPY": labels[-2] if len(labels) > 1 else None,
+        },
+        "monthly": {"labels": month_labels, "counts": month_counts},
+        "weekly": {"labels": week_labels, "counts": week_counts},
+        "causes": causes, "fault": fault, "status": status, "depotAgg": depot_agg_list,
+        "rows": rows,
+    }
+
+
+def build_v2_overview_payload(conn):
+    as_of = as_of_today(conn)
+    vehicle_count = conn.execute("SELECT COUNT(*) c FROM vehicles WHERE status='On cover'").fetchone()["c"]
+    claims_payload = build_v2_claims_payload(conn)
+    total_incurred = claims_payload["totals"]["totalIncurred"]
+    total_claims = claims_payload["totals"]["totalClaims"]
+    cost_per_vehicle = (total_incurred / vehicle_count) if vehicle_count else 0
+    depot_agg = claims_payload["depotAgg"]
+    top2 = sorted(depot_agg, key=lambda d: d["claims"], reverse=True)[:2]
+    top2_claims_pct = round(sum(d["claims"] for d in top2) / total_claims * 100) if total_claims else 0
+    top2_vehicle_pct = round(sum(d["vehicles"] for d in top2) / vehicle_count * 100) if vehicle_count else 0
+
+    watch_high = build_watchlist("high")
+    watch_med = build_watchlist("med")
+    flagged_count = len(watch_high) + len(watch_med)
+    top_drivers = build_top_drivers(limit=3)
+    for d in top_drivers:
+        d["tierLabel"] = V2_TIER_LABEL[d["tier"]]
+
+    recent = conn.execute(
+        "SELECT ref, depot, cause, status, incurred, loss_date FROM claims ORDER BY loss_date DESC, id DESC LIMIT 4"
+    ).fetchall()
+    recent_claims = [
+        {
+            "ref": r["ref"], "depot": r["depot"], "cause": r["cause"],
+            "status": r["status"], "incurred": r["incurred"] or 0,
+            "dateLabel": datetime.strptime(r["loss_date"], "%Y-%m-%d").strftime("%d %b") if r["loss_date"] else "",
+        }
+        for r in recent
+    ]
+
+    return {
+        "client": V2_CLIENT_NAME, "asOf": as_of.strftime("%d %b %Y"),
+        "vehicleCount": vehicle_count, "totalClaims": total_claims,
+        "openClaims": claims_payload["totals"]["openClaims"],
+        "totalIncurred": total_incurred, "costPerVehicle": cost_per_vehicle,
+        "currentLR": claims_payload["totals"]["currentLR"], "priorLR": claims_payload["totals"]["priorLR"],
+        "currentPY": claims_payload["totals"]["currentPY"], "target": claims_payload["lossRatio"]["target"],
+        "depotAgg": depot_agg, "top2": [d["depot"] for d in top2],
+        "top2ClaimsPct": top2_claims_pct, "top2VehiclePct": top2_vehicle_pct,
+        "flaggedCount": flagged_count, "topDrivers": top_drivers,
+        "recentClaims": recent_claims,
+    }
+
+
+def build_v2_driver_payload(depot=None, slug=None):
+    all_drivers = []
+    for d, drivers in SAMPLE_DRIVERS.items():
+        for dr in drivers:
+            score = sum(dr["metrics"].values())
+            all_drivers.append({**dr, "depot": d, "score": score})
+    all_drivers.sort(key=lambda d: d["score"], reverse=True)
+
+    chosen = None
+    if depot and slug:
+        chosen = next((d for d in all_drivers if d["depot"] == depot and d["slug"] == slug), None)
+    if not chosen:
+        chosen = all_drivers[0]
+
+    fleet_total = len(all_drivers)
+    fleet_rank = all_drivers.index(chosen) + 1
+    fleet_percentile = round((fleet_total - fleet_rank) / fleet_total * 100)
+
+    depot_peers = sorted([d for d in all_drivers if d["depot"] == chosen["depot"]], key=lambda d: d["score"], reverse=True)
+    depot_rank = depot_peers.index(chosen) + 1
+
+    fleet_avg = {k: sum(d["metrics"][k] for d in all_drivers) / len(all_drivers) for k in chosen["metrics"]}
+    metric_percentiles = {}
+    for k in chosen["metrics"]:
+        vals = [d["metrics"][k] for d in all_drivers]
+        below = sum(1 for v in vals if v < chosen["metrics"][k])
+        metric_percentiles[k] = round(below / (len(vals) - 1) * 100) if len(vals) > 1 else 100
+
+    idx = all_drivers.index(chosen)
+    prev_driver = all_drivers[idx - 1] if idx > 0 else None
+    next_driver = all_drivers[idx + 1] if idx < len(all_drivers) - 1 else None
+
+    return {
+        "client": V2_CLIENT_NAME,
+        "driver": chosen, "tierLabel": V2_TIER_LABEL[chosen["tier"]],
+        "ladder": V2_LADDER, "stepIndex": V2_STEP_INDEX[chosen["tier"]],
+        "fleetRank": fleet_rank, "fleetTotal": fleet_total, "fleetPercentile": fleet_percentile,
+        "depotRank": depot_rank, "depotTotal": len(depot_peers),
+        "fleetAvg": fleet_avg, "metricPercentiles": metric_percentiles,
+        "prevDriver": prev_driver, "nextDriver": next_driver,
+        "otherDrivers": [d for d in all_drivers if d is not chosen],
+    }
+
+
+@app.route("/overview-v2")
+def overview_v2():
+    conn = get_db()
+    data = build_v2_overview_payload(conn)
+    conn.close()
+    return render_template("overview_v2.html", v2_active="overview", v2_as_of=data["asOf"], data=data)
+
+
+@app.route("/claims-v2")
+def claims_v2():
+    conn = get_db()
+    data = build_v2_claims_payload(conn)
+    conn.close()
+    return render_template("claims_v2.html", v2_active="claims", v2_as_of=data["asOf"], data=data)
+
+
+@app.route("/driver-v2")
+@app.route("/driver-v2/<depot>/<slug>")
+def driver_v2(depot=None, slug=None):
+    conn = get_db()
+    as_of = as_of_today(conn)
+    conn.close()
+    data = build_v2_driver_payload(depot, slug)
+    return render_template("driver_v2.html", v2_active="driver", v2_as_of=as_of.strftime("%d %b %Y"), data=data)
+
+
+@app.route("/login-v2")
+def login_v2():
+    return render_template("login_v2.html")
 
 
 # Called at import time (not just under `python app.py`) so the database is
