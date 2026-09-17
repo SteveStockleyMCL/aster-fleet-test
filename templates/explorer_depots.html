@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Explorer{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Fleet Explorer</h2>
+  <p>Click into a depot to see its vehicles, and — once a telematics provider is connected — the drivers behind them. Depot and vehicle figures below are real; driver detail is an illustrative preview of where this is heading.</p>
+</div>
+
+<div class="illustrative-note">Depot vehicle counts and claims figures are real, from the same database as Portfolio and Claims. The "drivers" count on each card is illustrative sample data — see a depot for detail.</div>
+
+<div class="depot-grid">
+  {% for d in depots %}
+  <a class="depot-card" href="{{ url_for('explorer_depot', depot=d.name) }}" style="text-decoration:none;color:inherit;display:block;">
+    <div class="depot-card-top">
+      <h3>{{ d.name }}</h3>
+      <span class="provider-tag">{{ d.driver_count }} sample drivers</span>
+    </div>
+    <div class="depot-stat-row">
+      <div class="depot-stat">Vehicles<b>{{ d.on_cover }}</b></div>
+      <div class="depot-stat">Claims<b>{{ d.claims }}</b></div>
+      <div class="depot-stat">Incurred<b>&pound;{{ "{:,.0f}".format(d.incurred) }}</b></div>
+    </div>
+    <div class="depot-risk-bar"><div class="depot-risk-fill" style="width:{{ d.risk_pct }}%;background:{{ 'var(--gold)' if d.risk_pct >= 66 else ('var(--warn)' if d.risk_pct >= 33 else 'var(--good)') }};"></div></div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
