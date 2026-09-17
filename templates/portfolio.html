@@ -87,7 +87,7 @@
           <td><b>{{ v.reg }}</b></td>
           <td>{{ v.cover_start }}</td>
           <td>{{ v.category }}</td>
-          <td>{{ v.make }} {{ v.model }}</td>
+          <td>{{ (v.make + ' ' + v.model) if v.make else v.model }}</td>
           <td>{{ v.depot }}</td>
           <td><span class="status-pill {{ 'closed' if v.status=='On cover' else 'removed' }}">{{ v.status }}</span></td>
           <td>{{ v.notes or '—' }}</td>
