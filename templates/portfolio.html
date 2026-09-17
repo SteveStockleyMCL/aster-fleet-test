@@ -7,6 +7,49 @@
   <p>Every cover Acme Fleet Services holds, and the live vehicle schedule &mdash; <span class="accent">backed by a real database</span>.</p>
 </div>
 
+{% if forecast %}
+<div class="cl-panel">
+  <h4>Fleet Motor renewal forecast &mdash; {{ forecast.current_py }}</h4>
+  <p class="cl-panel-sub">Modelled from this policy year&rsquo;s loss ratio and claim frequency against target &mdash; illustrative, not a quotation.</p>
+  <div class="stat-row stat-row-5">
+    <div class="stat-card">
+      <div class="stat-label">Loss ratio ({{ forecast.current_py }})</div>
+      <div class="stat-value">{{ "%.1f"|format(forecast.current_lr) }}%</div>
+      <div class="stat-sub">target {{ "%.1f"|format(forecast.target) }}%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Claim frequency
+        <span class="stat-info" tabindex="0">i<span class="stat-info-tip">Claims reported in {{ forecast.current_py }} as a share of vehicles currently on cover &mdash; the number of claims per vehicle, expressed as a percentage. Higher means, on average, each vehicle in the fleet is claiming more often.</span></span>
+      </div>
+      <div class="stat-value">{{ "%.1f"|format(forecast.frequency * 100) }}%</div>
+      <div class="stat-sub">{{ forecast.claims_this_year }} claims across {{ forecast.vehicles }} vehicles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Suggested movement</div>
+      <div class="stat-value">{{ '+' if forecast.low >= 0 else '' }}{{ forecast.low }}% to {{ '+' if forecast.high >= 0 else '' }}{{ forecast.high }}%</div>
+      <div class="stat-sub">at next Fleet Motor renewal</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Indicative premium</div>
+      <div class="stat-value">&pound;{{ "{:,.0f}".format(forecast.low_premium) }}&ndash;&pound;{{ "{:,.0f}".format(forecast.high_premium) }}</div>
+      <div class="stat-sub">vs &pound;{{ "{:,.0f}".format(forecast.current_premium) }} now</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Rate per vehicle
+        <span class="stat-info" tabindex="0">i<span class="stat-info-tip">Fleet Motor premium divided by vehicles currently on cover &mdash; the average annual premium being paid per vehicle in the fleet.</span></span>
+      </div>
+      <div class="stat-value">&pound;{{ "{:,.0f}".format(forecast.rate_per_vehicle) }}</div>
+      <div class="stat-sub">projected &pound;{{ "{:,.0f}".format(forecast.low_rate_per_vehicle) }}&ndash;&pound;{{ "{:,.0f}".format(forecast.high_rate_per_vehicle) }} at renewal</div>
+    </div>
+  </div>
+  <p class="portfolio-forecast-note" style="color:var(--ink-soft);font-size:12.5px;line-height:1.6;margin:14px 0 0;">
+    The {{ forecast.current_py }} loss ratio is {{ forecast.direction }} target (<b>{{ "%.1f"|format(forecast.current_lr) }}%</b> vs <b>{{ "%.1f"|format(forecast.target) }}%</b>), and claim frequency has {{ forecast.freq_trend }} year-on-year.
+    Weighting both factors, a Fleet Motor renewal built on this trajectory would likely land around a <b>{{ '+' if forecast.low >= 0 else '' }}{{ forecast.low }}% to {{ '+' if forecast.high >= 0 else '' }}{{ forecast.high }}%</b> rate movement &mdash; roughly <b>&pound;{{ "{:,.0f}".format(forecast.low_premium) }} to &pound;{{ "{:,.0f}".format(forecast.high_premium) }}</b> against this year&rsquo;s &pound;{{ "{:,.0f}".format(forecast.current_premium) }} now.
+    Illustrative only: insurers price on their own claims experience view and underwriting appetite at the time, not this model.
+  </p>
+</div>
+{% endif %}
+
 <div class="cl-panel">
   <h4>Covers</h4>
   <p class="cl-panel-sub">Active policies on this account</p>
