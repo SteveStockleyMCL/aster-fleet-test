@@ -26,6 +26,8 @@
       <a class="portal-tab {{ 'active' if active_tab == 'portfolio' else '' }}" href="{{ url_for('portfolio') }}">Portfolio</a>
       <a class="portal-tab {{ 'active' if active_tab == 'claims' else '' }}" href="{{ url_for('claims') }}">Claims</a>
       <a class="portal-tab {{ 'active' if active_tab == 'performance' else '' }}" href="{{ url_for('performance') }}">Fleet Performance</a>
+      <a class="portal-tab {{ 'active' if active_tab == 'explorer' else '' }}" href="{{ url_for('explorer') }}">Explorer</a>
+      <a class="portal-tab {{ 'active' if active_tab == 'roadmap' else '' }}" href="{{ url_for('roadmap') }}">Roadmap</a>
     </div>
   </div>
 </div>
@@ -39,7 +41,7 @@
   {% block content %}{% endblock %}
 </div>
 
-<footer class="portal-foot">Live test build on real data entry &mdash; Acme Fleet Services. Backed by a real database now; still short of Explorer &amp; Roadmap from the concept preview.</footer>
+<footer class="portal-foot">Live test build on real data entry &mdash; Acme Fleet Services. Explorer and Roadmap use real depot and vehicle data where it exists in the database; driver-level detail is illustrative until a telematics feed is connected.</footer>
 
 </body>
 </html>
