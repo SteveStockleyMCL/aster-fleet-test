@@ -56,6 +56,114 @@ CATEGORIES = [
     "Artic HGV", "Rigid HGV", "7.5T Rigid", "Transit Van", "Sprinter Van", "Pickup",
 ]
 
+# ---------------------------------------------------------------------------
+# Illustrative driver-level data for the Explorer / Roadmap concept pages.
+#
+# The real database (see db.py) tracks vehicles and claims at depot level —
+# there is no telematics feed and no drivers table, so nothing below is real
+# data. It mirrors the "vision" content from the original concept preview:
+# clearly labelled sample profiles showing what Aster would surface once a
+# telematics provider is connected, not a claim about any real individual.
+# ---------------------------------------------------------------------------
+SAMPLE_DRIVERS = {
+    "Birmingham": [
+        {
+            "slug": "r-hutton", "name": "R. Hutton", "role": "HGV Class 1 Driver",
+            "service": "6 yrs 1 mth", "licence": "Cat C+E", "points": 3, "tier": "med",
+            "metrics": {"Harsh braking": 58, "Harsh cornering": 34, "Speeding events": 41, "Night driving": 22},
+            "blurb": "Above-depot-average harsh braking events over the last quarter, concentrated on the A38 corridor. No claims recorded in the last 12 months.",
+            "actions": ["Book a one-to-one coaching session on braking technique", "Review telematics trend again at next monthly check-in"],
+        },
+        {
+            "slug": "k-adeyemi", "name": "K. Adeyemi", "role": "7.5T Driver",
+            "service": "1 yr 8 mths", "licence": "Cat C", "points": 0, "tier": "low",
+            "metrics": {"Harsh braking": 19, "Harsh cornering": 14, "Speeding events": 9, "Night driving": 31},
+            "blurb": "Consistently smooth driving profile since joining. A good candidate for the depot's driver mentor scheme.",
+            "actions": ["No action required — maintain current monitoring"],
+        },
+    ],
+    "Bristol": [
+        {
+            "slug": "d-price", "name": "D. Price", "role": "Artic Driver",
+            "service": "9 yrs 4 mths", "licence": "Cat C+E", "points": 6, "tier": "high",
+            "metrics": {"Harsh braking": 71, "Harsh cornering": 63, "Speeding events": 68, "Night driving": 44},
+            "blurb": "Elevated risk score across all telematics measures this quarter, alongside two own-damage claims in the last 12 months. Flagged for review.",
+            "actions": ["Schedule a formal driving-standards review", "Check licence endorsements are still within policy terms"],
+        },
+        {
+            "slug": "s-malik", "name": "S. Malik", "role": "Transit Van Driver",
+            "service": "3 yrs", "licence": "Cat B", "points": 0, "tier": "low",
+            "metrics": {"Harsh braking": 23, "Harsh cornering": 17, "Speeding events": 12, "Night driving": 8},
+            "blurb": "No adverse telematics events recorded. Depot's lowest-mileage-per-incident driver.",
+            "actions": ["No action required"],
+        },
+    ],
+    "Glasgow": [
+        {
+            "slug": "a-mackenzie", "name": "A. MacKenzie", "role": "Rigid HGV Driver",
+            "service": "5 yrs 6 mths", "licence": "Cat C", "points": 3, "tier": "med",
+            "metrics": {"Harsh braking": 46, "Harsh cornering": 39, "Speeding events": 52, "Night driving": 27},
+            "blurb": "Speeding-event frequency has risen over the last two months, mainly on dual-carriageway sections.",
+            "actions": ["Share route-specific speed reminder ahead of winter conditions"],
+        },
+        {
+            "slug": "l-fraser", "name": "L. Fraser", "role": "Sprinter Van Driver",
+            "service": "2 yrs 2 mths", "licence": "Cat B", "points": 0, "tier": "low",
+            "metrics": {"Harsh braking": 15, "Harsh cornering": 11, "Speeding events": 6, "Night driving": 19},
+            "blurb": "Steady, low-risk profile since joining. No claims on record.",
+            "actions": ["No action required"],
+        },
+    ],
+    "Leeds": [
+        {
+            "slug": "j-oconnor", "name": "J. O'Connor", "role": "Artic Driver",
+            "service": "7 yrs", "licence": "Cat C+E", "points": 3, "tier": "med",
+            "metrics": {"Harsh braking": 49, "Harsh cornering": 44, "Speeding events": 38, "Night driving": 51},
+            "blurb": "Regularly runs night trunking routes; night-driving events tracking slightly above depot average.",
+            "actions": ["Confirm fatigue-management rest breaks are being logged correctly"],
+        },
+        {
+            "slug": "m-wilkinson", "name": "M. Wilkinson", "role": "Pickup Driver",
+            "service": "11 mths", "licence": "Cat B", "points": 0, "tier": "low",
+            "metrics": {"Harsh braking": 21, "Harsh cornering": 18, "Speeding events": 14, "Night driving": 5},
+            "blurb": "New starter with a clean telematics record so far.",
+            "actions": ["Complete standard 12-month new-starter review"],
+        },
+    ],
+    "Manchester": [
+        {
+            "slug": "t-nwosu", "name": "T. Nwosu", "role": "Rigid HGV Driver",
+            "service": "4 yrs 7 mths", "licence": "Cat C", "points": 6, "tier": "high",
+            "metrics": {"Harsh braking": 66, "Harsh cornering": 58, "Speeding events": 61, "Night driving": 33},
+            "blurb": "Two at-fault claims in the last 12 months alongside a high harsh-cornering rate. Highest combined risk score at the depot.",
+            "actions": ["Schedule a formal driving-standards review", "Consider a defensive-driving refresher course"],
+        },
+        {
+            "slug": "e-brennan", "name": "E. Brennan", "role": "7.5T Driver",
+            "service": "3 yrs 3 mths", "licence": "Cat C", "points": 0, "tier": "low",
+            "metrics": {"Harsh braking": 17, "Harsh cornering": 13, "Speeding events": 10, "Night driving": 12},
+            "blurb": "Consistently strong telematics profile across all measures.",
+            "actions": ["No action required"],
+        },
+    ],
+    "Newcastle": [
+        {
+            "slug": "p-dodds", "name": "P. Dodds", "role": "Transit Van Driver",
+            "service": "2 yrs 9 mths", "licence": "Cat B", "points": 3, "tier": "med",
+            "metrics": {"Harsh braking": 44, "Harsh cornering": 37, "Speeding events": 47, "Night driving": 16},
+            "blurb": "Speeding events above depot average, concentrated on the A1 corridor south of the depot.",
+            "actions": ["Share route-specific speed reminder"],
+        },
+        {
+            "slug": "c-armstrong", "name": "C. Armstrong", "role": "Sprinter Van Driver",
+            "service": "5 yrs 1 mth", "licence": "Cat B", "points": 0, "tier": "low",
+            "metrics": {"Harsh braking": 20, "Harsh cornering": 16, "Speeding events": 11, "Night driving": 9},
+            "blurb": "Low-risk profile maintained consistently since joining.",
+            "actions": ["No action required"],
+        },
+    ],
+}
+
 
 def as_of_today(conn):
     meta_as_of = get_meta(conn, "as_of")
@@ -444,6 +552,120 @@ def performance():
         loss_ratio=loss_ratio_meta.get("overall_loss_ratio"),
         target=loss_ratio_meta.get("target", 65.0),
     )
+
+
+@app.route("/explorer")
+def explorer():
+    conn = get_db()
+    depot_names = [r["depot"] for r in conn.execute(
+        "SELECT DISTINCT depot FROM vehicles ORDER BY depot"
+    ).fetchall()]
+
+    vehicle_rows = conn.execute(
+        """SELECT depot, COUNT(*) vehicle_count,
+           SUM(CASE WHEN status='On cover' THEN 1 ELSE 0 END) on_cover
+           FROM vehicles GROUP BY depot"""
+    ).fetchall()
+    vehicle_by_depot = {r["depot"]: r for r in vehicle_rows}
+
+    claim_rows = conn.execute(
+        """SELECT depot, COUNT(*) claims, COALESCE(SUM(incurred),0) incurred
+           FROM claims GROUP BY depot"""
+    ).fetchall()
+    claims_by_depot = {r["depot"]: r for r in claim_rows}
+    conn.close()
+
+    depots = []
+    max_freq = 0.0
+    for name in depot_names:
+        v = vehicle_by_depot.get(name)
+        c = claims_by_depot.get(name)
+        on_cover = v["on_cover"] if v else 0
+        claims = c["claims"] if c else 0
+        incurred = c["incurred"] if c else 0
+        freq = (claims / on_cover) if on_cover else 0
+        max_freq = max(max_freq, freq)
+        depots.append({
+            "name": name, "on_cover": on_cover, "claims": claims,
+            "incurred": incurred, "freq": freq,
+            "driver_count": len(SAMPLE_DRIVERS.get(name, [])),
+        })
+    for d in depots:
+        d["risk_pct"] = round((d["freq"] / max_freq) * 100) if max_freq else 0
+
+    return render_template("explorer_depots.html", active_tab="explorer", depots=depots)
+
+
+@app.route("/explorer/<depot>")
+def explorer_depot(depot):
+    conn = get_db()
+    vehicles = conn.execute(
+        "SELECT * FROM vehicles WHERE depot=? AND status='On cover' ORDER BY reg",
+        (depot,),
+    ).fetchall()
+    if not vehicles and not conn.execute(
+        "SELECT 1 FROM vehicles WHERE depot=? LIMIT 1", (depot,)
+    ).fetchone():
+        conn.close()
+        return redirect(url_for("explorer"))
+
+    claims_stats = conn.execute(
+        """SELECT COUNT(*) claims, COALESCE(SUM(incurred),0) incurred,
+           SUM(CASE WHEN closed=0 THEN 1 ELSE 0 END) open
+           FROM claims WHERE depot=?""",
+        (depot,),
+    ).fetchone()
+    conn.close()
+
+    drivers = SAMPLE_DRIVERS.get(depot, [])
+    tab = request.args.get("tab", "vehicles")
+    return render_template(
+        "explorer_depot.html", active_tab="explorer", depot=depot,
+        vehicles=vehicles, claims_stats=claims_stats, drivers=drivers, tab=tab,
+    )
+
+
+@app.route("/explorer/<depot>/vehicle/<int:vehicle_id>")
+def explorer_vehicle(depot, vehicle_id):
+    conn = get_db()
+    vehicle = conn.execute(
+        "SELECT * FROM vehicles WHERE id=? AND depot=?", (vehicle_id, depot)
+    ).fetchone()
+    if not vehicle:
+        conn.close()
+        return redirect(url_for("explorer_depot", depot=depot))
+    related_claims = conn.execute(
+        """SELECT * FROM claims WHERE depot=? AND vehicle_type=?
+           ORDER BY loss_date DESC LIMIT 5""",
+        (depot, vehicle["category"]),
+    ).fetchall()
+    conn.close()
+
+    drivers = SAMPLE_DRIVERS.get(depot, [])[:2]
+    return render_template(
+        "explorer_vehicle.html", active_tab="explorer", depot=depot,
+        vehicle=vehicle, related_claims=related_claims, drivers=drivers,
+    )
+
+
+@app.route("/explorer/<depot>/driver/<slug>")
+def explorer_driver(depot, slug):
+    driver = next((d for d in SAMPLE_DRIVERS.get(depot, []) if d["slug"] == slug), None)
+    if not driver:
+        return redirect(url_for("explorer_depot", depot=depot))
+    return render_template(
+        "explorer_driver.html", active_tab="explorer", depot=depot, driver=driver,
+    )
+
+
+@app.route("/roadmap")
+def roadmap():
+    watchlist = []
+    for depot, drivers in SAMPLE_DRIVERS.items():
+        for d in drivers:
+            if d["tier"] == "high":
+                watchlist.append({**d, "depot": depot})
+    return render_template("roadmap.html", active_tab="roadmap", watchlist=watchlist)
 
 
 # Called at import time (not just under `python app.py`) so the database is
