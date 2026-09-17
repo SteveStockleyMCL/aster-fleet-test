@@ -1,0 +1,74 @@
+{#
+  Shared SVG chart-drawing macros. Geometry is computed server-side in
+  app.py (bars/points/paths as pixel coordinates); these macros just place
+  the shapes. Hover tooltips are handled by one shared JS layer
+  (static/js/charts.js) reading the data-tip-label / data-tip-value
+  attributes below, rather than a charting library — same interaction
+  pattern as the original concept mockup's own hand-built charts.
+#}
+
+{% macro bar_chart_svg(chart, aria_label, fmt='num', link_to=none) %}
+<div class="chart-scroll">
+  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
+    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
+      {% for g in chart.grid %}
+      <line class="chart-grid" x1="{{ chart.axis_x1 }}" y1="{{ g.y }}" x2="{{ chart.axis_x2 }}" y2="{{ g.y }}"></line>
+      {% endfor %}
+      {% for b in chart.bars %}
+      <rect class="chart-bar{{ ' chart-clickable' if link_to }}" data-tip-label="{{ b.label }}" data-tip-value="{% if fmt=='gbp' %}&pound;{{ '{:,.0f}'.format(b.value) }}{% else %}{{ b.value }}{% endif %}{% if link_to %}<br><span style='opacity:.75;'>Click to filter the register</span>{% endif %}"{% if link_to %} data-href="{{ url_for(link_to, depot=b.label) }}"{% endif %} x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
+      <text class="chart-x-label" x="{{ b.label_x }}" y="{{ chart.height - 8 }}">{{ b.label }}</text>
+      {% endfor %}
+    </svg>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro hbar_chart_svg(chart, aria_label, fmt='gbp') %}
+<div class="chart-scroll">
+  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
+    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
+      {% for b in chart.bars %}
+      <text class="chart-hbar-label" x="{{ b.label_x }}" y="{{ b.label_y }}">{{ b.label }}</text>
+      <rect class="chart-bar chart-bar-alt" data-tip-label="{{ b.label }}" data-tip-value="{% if fmt=='gbp' %}&pound;{{ '{:,.0f}'.format(b.value) }}{% else %}{{ b.value }}{% endif %}" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
+      <text class="chart-hbar-value" x="{{ b.value_x }}" y="{{ b.value_y }}">{% if fmt=='gbp' %}&pound;{{ "{:,.0f}".format(b.value) }}{% else %}{{ b.value }}{% endif %}</text>
+      {% endfor %}
+    </svg>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro line_chart_svg(chart, aria_label, fmt='num') %}
+<div class="chart-scroll">
+  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
+    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
+      {% for g in chart.grid %}
+      <line class="chart-grid" x1="36" y1="{{ g.y }}" x2="{{ chart.width - 12 }}" y2="{{ g.y }}"></line>
+      <text class="chart-axis-label" x="4" y="{{ g.y + 4 }}">{% if fmt=='gbp' %}&pound;{{ (g.value/1000)|round|int }}k{% elif fmt=='pct' %}{{ g.value|round|int }}%{% else %}{{ g.value|round|int }}{% endif %}</text>
+      {% endfor %}
+      {% if chart.target_y is not none %}
+      <line class="chart-target-line" x1="36" y1="{{ chart.target_y }}" x2="{{ chart.width - 12 }}" y2="{{ chart.target_y }}"></line>
+      {% endif %}
+      <polyline class="chart-line" points="{{ chart.polyline }}"></polyline>
+      {% for p in chart.points %}
+      <circle class="chart-point" data-tip-label="{{ p.label }}" data-tip-value="{% if fmt=='gbp' %}&pound;{{ '{:,.0f}'.format(p.value) }}{% elif fmt=='pct' %}{{ '%.1f'|format(p.value) }}%{% else %}{{ p.value }}{% endif %}" cx="{{ p.x }}" cy="{{ p.y }}" r="3.5"></circle>
+      <text class="chart-x-label" x="{{ p.x }}" y="{{ chart.height - 10 }}">{{ p.label }}</text>
+      {% endfor %}
+    </svg>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro donut_chart(chart, aria_label) %}
+<div class="donut-wrap">
+  <svg class="donut-svg" width="{{ chart.size }}" height="{{ chart.size }}" viewBox="0 0 {{ chart.size }} {{ chart.size }}" role="img" aria-label="{{ aria_label }}">
+    {% for s in chart.segments %}
+    <path class="donut-seg chart-cat-{{ s.cat }}" data-tip-label="{{ s.label }}" data-tip-value="{{ s.pct }}% ({{ s.value }})" d="{{ s.path }}"></path>
+    {% endfor %}
+  </svg>
+  <div class="donut-legend">
+    {% for s in chart.segments %}
+    <div class="donut-legend-item"><span class="donut-swatch chart-cat-{{ s.cat }}"></span>{{ s.label }}<b>{{ s.pct }}%</b></div>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}
