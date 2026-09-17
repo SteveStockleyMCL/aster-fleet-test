@@ -117,6 +117,8 @@ button{font-family:inherit;}
 }
 .topbar-renewal.tb-soon{background:var(--gold-soft);border-color:var(--gold);color:var(--gold);}
 .topbar-renewal b{font-weight:800;}
+.portal-logout{font-size:12px;font-weight:700;color:rgba(255,255,255,.72);text-decoration:none;flex:none;}
+.portal-logout:hover{color:#fff;}
 .theme-toggle{
   appearance:none;flex:none;width:34px;height:34px;border-radius:50%;
   border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);
