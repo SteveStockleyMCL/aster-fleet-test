@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ cover.name }} · Portfolio{% endblock %}
+{% block content %}
+<div class="crumb-bar">
+  <a class="crumb" href="{{ url_for('portfolio') }}">Portfolio</a>
+  <span class="crumb-sep">/</span>
+  <span class="crumb current">{{ cover.name }}</span>
+</div>
+
+<div class="depot-head">
+  <div>
+    <h1>{{ cover.name }}</h1>
+    <div class="depot-head-meta">{{ cover.insurer }} &middot; policy {{ cover.policy_number }} &middot; {{ cover.period_start }} &ndash; {{ cover.period_end }}</div>
+  </div>
+  <div class="depot-kpi-row">
+    <div class="depot-kpi">Premium<b>&pound;{{ "{:,.0f}".format(cover.premium or 0) }}</b></div>
+    <div class="depot-kpi">Status<b>{{ cover.status }}</b></div>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Excess &amp; standard exclusions</h4>
+  <p class="cl-panel-sub">Illustrative policy terms &mdash; the schedule and wording (below) are the contractual source</p>
+  <div class="illustrative-note">Illustrative only &mdash; representative excess and exclusion terms shown to demonstrate the concept. Not extracted from a real policy wording; confirm actual terms against the documents below once connected.</div>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">Standard excess</div>
+      <div class="stat-value">{% if terms.standard_excess %}&pound;{{ "{:,.0f}".format(terms.standard_excess) }}{% else %}&mdash;{% endif %}</div>
+    </div>
+  </div>
+  <div class="section-gap">
+    <h5 style="font-size:13px;margin:0 0 10px;">Standard exclusions</h5>
+    <ul class="excl-list">
+      {% for e in terms.exclusions %}
+      <li>{{ e }}</li>
+      {% else %}
+      <li class="empty-note" style="padding:0;">No exclusions configured for this cover.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+{% if age_band_stats %}
+<div class="cl-panel section-gap">
+  <h4>Driver age matrix</h4>
+  <p class="cl-panel-sub">Claims frequency and cost by driver age band (real data) alongside excess terms by age band (illustrative)</p>
+  <div class="illustrative-note">The <b>Claims</b> and <b>Avg cost</b> columns are computed from the real claims register (driver age band recorded on each claim). The <b>Excess</b>, <b>Loading</b> and <b>Restriction</b> columns are illustrative example terms, not extracted from a real policy wording.</div>
+  <div class="table-wrap">
+    <table class="claims-table">
+      <thead>
+        <tr>
+          <th>Age band</th>
+          <th>Claims</th>
+          <th style="text-align:right;">Total incurred</th>
+          <th style="text-align:right;">Avg cost</th>
+          <th style="text-align:right;">Standard excess</th>
+          <th style="text-align:right;">Additional loading</th>
+          <th>Restriction</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in age_band_stats %}
+        <tr>
+          <td><b>{{ b.band }}</b></td>
+          <td>{{ b.claims }}</td>
+          <td style="text-align:right;">&pound;{{ "{:,.0f}".format(b.incurred) }}</td>
+          <td style="text-align:right;">&pound;{{ "{:,.0f}".format(b.avg_cost) }}</td>
+          <td style="text-align:right;">&pound;{{ "{:,.0f}".format(b.excess) }}</td>
+          <td style="text-align:right;">{% if b.loading %}+&pound;{{ "{:,.0f}".format(b.loading) }}{% else %}&mdash;{% endif %}</td>
+          <td>{{ b.restriction }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="cl-panel section-gap">
+  <h4>Documents</h4>
+  <p class="cl-panel-sub">Schedule, statement of fact and wording held for this cover</p>
+  <div class="illustrative-note">Illustrative only &mdash; shows what a connected document store would surface here. These are sample filenames; no document store is connected yet, so nothing is downloadable in this preview.</div>
+  <div class="list-panel">
+    {% for d in documents %}
+    <div class="list-row" style="cursor:default;">
+      <div class="list-avatar" style="border-radius:8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      </div>
+      <div class="list-main">
+        <div class="list-title">{{ d }}{% if policy_period_label %} {{ policy_period_label }}{% endif %}.pdf</div>
+        <div class="list-sub">Illustrative sample &mdash; not a real document</div>
+      </div>
+      <span class="list-chip med">Preview only</span>
+    </div>
+    {% else %}
+    <div class="empty-note">No documents recorded for this cover.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
