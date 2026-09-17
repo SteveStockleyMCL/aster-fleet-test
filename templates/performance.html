@@ -23,10 +23,54 @@
   </div>
 </div>
 
+{% if lr_chart %}
+<div class="cl-panel section-gap">
+  <h4>Loss ratio by policy year</h4>
+  <p class="cl-panel-sub">Actual loss ratio against the {{ '%.0f'|format(target) }}% target, policy year on policy year</p>
+  <div class="chart-scroll">
+    <div class="chart-frame" style="aspect-ratio:{{ lr_chart.width }}/{{ lr_chart.height }};">
+      <svg class="chart-svg" viewBox="0 0 {{ lr_chart.width }} {{ lr_chart.height }}" role="img" aria-label="Loss ratio by policy year">
+        {% for g in lr_chart.grid %}
+        <line class="chart-grid" x1="36" y1="{{ g.y }}" x2="{{ lr_chart.width - 12 }}" y2="{{ g.y }}"></line>
+        <text class="chart-axis-label" x="4" y="{{ g.y + 4 }}">{{ g.value|round|int }}%</text>
+        {% endfor %}
+        {% if lr_chart.target_y is not none %}
+        <line class="chart-target-line" x1="36" y1="{{ lr_chart.target_y }}" x2="{{ lr_chart.width - 12 }}" y2="{{ lr_chart.target_y }}"></line>
+        {% endif %}
+        <polyline class="chart-line" points="{{ lr_chart.polyline }}"></polyline>
+        {% for p in lr_chart.points %}
+        <circle class="chart-point" cx="{{ p.x }}" cy="{{ p.y }}" r="3.5"></circle>
+        <text class="chart-x-label" x="{{ p.x }}" y="{{ lr_chart.height - 10 }}">{{ p.label }}</text>
+        <title>{{ p.label }}: {{ '%.1f'|format(p.value) }}%</title>
+        {% endfor %}
+      </svg>
+    </div>
+  </div>
+  <div class="chart-legend">
+    <span><i class="chart-swatch chart-swatch-line"></i>Loss ratio</span>
+    <span><i class="chart-swatch chart-swatch-target"></i>Target ({{ '%.0f'|format(target) }}%)</span>
+  </div>
+</div>
+{% endif %}
+
 <div class="cl-panel section-gap">
   <h4>By depot</h4>
-  <p class="cl-panel-sub">Claim volume and cost concentration across the network</p>
-  <div class="table-wrap">
+  <p class="cl-panel-sub">Total incurred cost across the network</p>
+  <div class="chart-scroll">
+    <div class="chart-frame" style="aspect-ratio:{{ depot_chart.width }}/{{ depot_chart.height }};">
+      <svg class="chart-svg" viewBox="0 0 {{ depot_chart.width }} {{ depot_chart.height }}" role="img" aria-label="Total incurred by depot">
+        {% for g in depot_chart.grid %}
+        <line class="chart-grid" x1="{{ depot_chart.axis_x1 }}" y1="{{ g.y }}" x2="{{ depot_chart.axis_x2 }}" y2="{{ g.y }}"></line>
+        {% endfor %}
+        {% for b in depot_chart.bars %}
+        <rect class="chart-bar" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
+        <text class="chart-x-label" x="{{ b.label_x }}" y="{{ depot_chart.height - 8 }}">{{ b.label }}</text>
+        <title>{{ b.label }}: &pound;{{ "{:,.0f}".format(b.value) }}</title>
+        {% endfor %}
+      </svg>
+    </div>
+  </div>
+  <div class="table-wrap section-gap">
     <table class="claims-table">
       <thead><tr><th>Depot</th><th>Claims</th><th>Open</th><th style="text-align:right;">Total incurred</th><th style="text-align:right;">Average cost</th></tr></thead>
       <tbody>
@@ -48,8 +92,19 @@
 
 <div class="cl-panel section-gap">
   <h4>Key incident types</h4>
-  <p class="cl-panel-sub">Top causes by claim volume</p>
-  <div class="table-wrap">
+  <p class="cl-panel-sub">Top causes by claim volume and cost</p>
+  <div class="chart-scroll">
+    <div class="chart-frame" style="aspect-ratio:{{ cause_chart.width }}/{{ cause_chart.height }};">
+      <svg class="chart-svg" viewBox="0 0 {{ cause_chart.width }} {{ cause_chart.height }}" role="img" aria-label="Total incurred by cause">
+        {% for b in cause_chart.bars %}
+        <text class="chart-hbar-label" x="{{ b.label_x }}" y="{{ b.label_y }}">{{ b.label }}</text>
+        <rect class="chart-bar chart-bar-alt" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
+        <text class="chart-hbar-value" x="{{ b.value_x }}" y="{{ b.value_y }}">&pound;{{ "{:,.0f}".format(b.value) }}</text>
+        {% endfor %}
+      </svg>
+    </div>
+  </div>
+  <div class="table-wrap section-gap">
     <table class="claims-table">
       <thead><tr><th>Cause</th><th>Claims</th><th style="text-align:right;">Total incurred</th></tr></thead>
       <tbody>
@@ -67,7 +122,24 @@
   </div>
 </div>
 
-<div class="overview-note section-gap">
-  <p>Safety overview and Driver risk (telematics-derived) haven&rsquo;t been ported from the concept preview yet &mdash; they need a real driver/telematics data source behind this database first.</p>
+<div class="cl-panel section-gap">
+  <h4>Driver risk</h4>
+  <p class="cl-panel-sub">Fleet-wide sample watchlist &mdash; drivers flagged for review across every depot</p>
+  <div class="illustrative-note">Illustrative only &mdash; sample profiles showing what this panel will surface once a telematics provider is connected. Not real people or real behaviour data. Full detail on each depot's Drivers tab in Explorer.</div>
+  <div class="list-panel">
+    {% for d in watchlist %}
+    <a class="list-row" style="text-decoration:none;color:inherit;" href="{{ url_for('explorer_driver', depot=d.depot, slug=d.slug) }}">
+      <div class="list-avatar">{{ d.name.split('.')[-1].strip()[:2]|upper }}</div>
+      <div class="list-main">
+        <div class="list-title">{{ d.name }}</div>
+        <div class="list-sub">{{ d.depot }} &middot; {{ d.role }}</div>
+      </div>
+      <span class="list-chip {{ d.tier }}">Review</span>
+      <svg class="list-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+    </a>
+    {% else %}
+    <div class="empty-note">No sample drivers currently flagged for review.</div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}
