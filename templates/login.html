@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign in &middot; Aster*</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+  body.auth-body{
+    min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;
+    background:
+      linear-gradient(120deg, rgba(1,17,38,.90) 0%, rgba(1,17,38,.72) 100%),
+      var(--img-hero) center/cover no-repeat;
+  }
+  .auth-card{
+    width:100%;max-width:400px;background:var(--panel);border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+    padding:36px 32px 28px;
+  }
+  .auth-logo{font-size:30px;font-weight:800;letter-spacing:-.02em;text-align:center;color:var(--ink);}
+  .auth-logo span{color:var(--gold);}
+  .auth-rule{width:36px;height:3px;background:var(--gold);margin:12px auto 14px;border-radius:2px;}
+  .auth-tagline{text-align:center;color:var(--ink-soft);font-size:13.5px;margin-bottom:26px;}
+  .auth-field{margin-bottom:16px;}
+  .auth-field label{display:block;font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+  .auth-field input{
+    width:100%;font-family:inherit;font-size:14px;padding:11px 13px;
+    border:1px solid var(--line);border-radius:8px;background:var(--cream);color:var(--ink);
+  }
+  .auth-field input:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .auth-pw-row{position:relative;}
+  .auth-pw-row input{padding-right:56px;}
+  .auth-pw-toggle{
+    position:absolute;right:11px;top:50%;transform:translateY(-50%);
+    background:none;border:none;color:var(--ink-soft);font-size:12.5px;font-weight:700;cursor:pointer;
+  }
+  .auth-row{display:flex;align-items:center;margin-bottom:20px;font-size:13px;}
+  .auth-remember{display:flex;align-items:center;gap:7px;color:var(--ink-soft);cursor:pointer;}
+  .auth-submit{
+    width:100%;background:var(--gold);color:#fff;border:none;border-radius:10px;
+    padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;
+  }
+  .auth-submit:hover{opacity:.92;}
+  .auth-error{
+    background:var(--gold-soft);color:var(--gold);border-radius:8px;
+    padding:10px 13px;font-size:13px;margin-bottom:16px;font-weight:600;
+  }
+  .auth-foot{text-align:center;color:var(--ink-soft);font-size:11px;margin-top:22px;line-height:1.6;}
+</style>
+</head>
+<body class="auth-body">
+  <div class="auth-card">
+    <div class="auth-logo">Aster<span>*</span></div>
+    <div class="auth-rule"></div>
+    <div class="auth-tagline">Removing the risk from fleet management.</div>
+
+    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+
+    <form method="post">
+      <div class="auth-field">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+      </div>
+      <div class="auth-field">
+        <label for="password">Password</label>
+        <div class="auth-pw-row">
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button type="button" class="auth-pw-toggle" onclick="var p=document.getElementById('password'); p.type = p.type==='password' ? 'text' : 'password'; this.textContent = p.type==='password' ? 'Show' : 'Hide';">Show</button>
+        </div>
+      </div>
+      <div class="auth-row">
+        <label class="auth-remember"><input type="checkbox" name="remember" value="1"> Remember me</label>
+      </div>
+      <button type="submit" class="auth-submit">Sign in</button>
+    </form>
+
+    <div class="auth-foot">
+      &copy; 2026 Acme Fleet Services &middot; McCarron Coates.<br>
+      Internal test build &mdash; not for production use.
+    </div>
+  </div>
+</body>
+</html>
+
