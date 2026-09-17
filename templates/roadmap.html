@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Roadmap{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Roadmap</h2>
+  <p>Aster is being built in phases. Here's what's live, what's next, and the platform it's building toward. Click any phase for more detail.</p>
+</div>
+
+<div class="roadmap" id="roadmap-list">
+  <div class="roadmap-topline"><span class="rt-word">Aster</span><span class="rt-ast">*</span><span class="rt-label">The road ahead</span></div>
+  <p class="roadmap-lead">Three phases, one route &mdash; from what's live today to the platform this is building toward. Click any marker for the detail.</p>
+
+  <div class="rm-phase now" data-open="true">
+    <div class="rm-marker">*</div>
+    <div class="rm-body">
+      <div class="rm-card">
+        <div class="rm-head-row"><span class="rm-tag">Live now</span><h3>Fleet visibility</h3><svg class="rm-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+        <p class="rm-summary">One view of every depot, every vehicle and every claim against your real fleet register and loss ratio &mdash; this portal, backed by a real database.</p>
+        <div class="rm-detail">
+          <p>Overview, Portfolio, Claims and Fleet Performance all read from the same live vehicle and claims register. Explorer now adds a depot-by-depot view of that same real data. No spreadsheets to maintain, no data re-keyed by hand.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rm-phase next" data-open="false">
+    <div class="rm-marker">*</div>
+    <div class="rm-body">
+      <div class="rm-card">
+        <div class="rm-head-row"><span class="rm-tag">Next</span><h3>Telematics integration</h3><svg class="rm-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+        <p class="rm-summary">Connecting your fleet's telematics feed alongside claims data &mdash; harsh braking, speed, mileage, time of day &mdash; and linking specific vehicles to the claims recorded against them.</p>
+        <div class="rm-detail">
+          <p>Claims history tells us what's already gone wrong. Telematics tells us what's happening on the road right now. Bringing the two together, and down to individual vehicle level, is what turns this from a report into an early-warning system.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rm-phase future" data-open="false">
+    <div class="rm-marker">*</div>
+    <div class="rm-body">
+      <div class="rm-card">
+        <div class="rm-head-row"><span class="rm-tag">The vision</span><h3>Driver risk intelligence</h3><svg class="rm-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+        <p class="rm-summary">Every employed and self-employed driver, risk-profiled from telematics, claims and premium data combined &mdash; with a clear recommendation on what to do about each one.</p>
+        <div class="rm-detail">
+          <p>This is what Aster is building toward: instead of "which depot had the most claims," the question becomes "which drivers need attention, and why." The preview below uses illustrative sample profiles &mdash; also explorable from each depot's Drivers tab &mdash; not real people or real behaviour data.</p>
+          <div class="rm-preview">
+            <div class="rm-preview-label">Illustrative only &mdash; driver watchlist &middot; click a driver for the full risk profile</div>
+            {% for d in watchlist %}
+            <a class="rm-driver-row" style="text-decoration:none;color:inherit;" href="{{ url_for('explorer_driver', depot=d.depot, slug=d.slug) }}">
+              <div class="rm-driver-avatar">{{ d.name.split('.')[-1].strip()[:2]|upper }}</div>
+              <div class="rm-driver-name">{{ d.name }}<span>{{ d.depot }} &middot; {{ d.role }}</span></div>
+              <span class="rm-driver-chip {{ d.tier }}">Review</span>
+              <svg class="rm-driver-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+            </a>
+            {% else %}
+            <div class="dp-empty">No sample drivers currently flagged for review.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.querySelectorAll('.rm-phase').forEach(function(phase){
+  var head = phase.querySelector('.rm-head-row');
+  var detail = phase.querySelector('.rm-detail');
+  function sync(){ detail.hidden = phase.dataset.open !== 'true'; }
+  sync();
+  head.addEventListener('click', function(){
+    phase.dataset.open = (phase.dataset.open === 'true') ? 'false' : 'true';
+    sync();
+  });
+});
+</script>
+{% endblock %}
+
