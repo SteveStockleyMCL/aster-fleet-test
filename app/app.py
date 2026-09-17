@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from db import get_db, init_db, get_meta, DB_PATH
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, Response
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app = Flask(
@@ -15,6 +15,25 @@ app = Flask(
     static_folder=os.path.join(PROJECT_ROOT, "static"),
 )
 app.secret_key = os.environ.get("SECRET_KEY", "aster-test-build-dev-secret")
+
+# Site-wide password protection (HTTP Basic Auth). The actual username and
+# password are set as environment variables on Render, never committed here.
+SITE_USERNAME = os.environ.get("SITE_USERNAME")
+SITE_PASSWORD = os.environ.get("SITE_PASSWORD")
+
+
+@app.before_request
+def require_login():
+    if not SITE_USERNAME or not SITE_PASSWORD:
+        # Auth not configured (e.g. running locally without the env vars set)
+        return
+    auth = request.authorization
+    if not auth or auth.username != SITE_USERNAME or auth.password != SITE_PASSWORD:
+        return Response(
+            "Authentication required.",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Aster Fleet Test"'},
+        )
 
 CATEGORIES = [
     "Artic HGV", "Rigid HGV", "7.5T Rigid", "Transit Van", "Sprinter Van", "Pickup",
