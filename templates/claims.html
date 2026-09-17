@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_chart_macros.html" as charts %}
 {% block title %}Claims{% endblock %}
 
 {% macro rag_level(value, target, higher_is_worse=true) %}
@@ -29,74 +30,6 @@ amber
   <div class="stat-label">{{ label }}</div>
   <div class="stat-value">{{ value_html }}</div>
   <div class="stat-sub">{{ sub_html }}</div>
-</div>
-{% endmacro %}
-
-{% macro bar_chart_svg(chart, aria_label, fmt='num') %}
-<div class="chart-scroll">
-  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
-    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
-      {% for g in chart.grid %}
-      <line class="chart-grid" x1="{{ chart.axis_x1 }}" y1="{{ g.y }}" x2="{{ chart.axis_x2 }}" y2="{{ g.y }}"></line>
-      {% endfor %}
-      {% for b in chart.bars %}
-      <rect class="chart-bar" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
-      <text class="chart-x-label" x="{{ b.label_x }}" y="{{ chart.height - 8 }}">{{ b.label }}</text>
-      <title>{{ b.label }}: {% if fmt=='gbp' %}&pound;{{ "{:,.0f}".format(b.value) }}{% else %}{{ b.value }}{% endif %}</title>
-      {% endfor %}
-    </svg>
-  </div>
-</div>
-{% endmacro %}
-
-{% macro hbar_chart_svg(chart, aria_label, fmt='gbp') %}
-<div class="chart-scroll">
-  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
-    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
-      {% for b in chart.bars %}
-      <text class="chart-hbar-label" x="{{ b.label_x }}" y="{{ b.label_y }}">{{ b.label }}</text>
-      <rect class="chart-bar chart-bar-alt" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
-      <text class="chart-hbar-value" x="{{ b.value_x }}" y="{{ b.value_y }}">{% if fmt=='gbp' %}&pound;{{ "{:,.0f}".format(b.value) }}{% else %}{{ b.value }}{% endif %}</text>
-      {% endfor %}
-    </svg>
-  </div>
-</div>
-{% endmacro %}
-
-{% macro line_chart_svg(chart, aria_label, fmt='num') %}
-<div class="chart-scroll">
-  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
-    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
-      {% for g in chart.grid %}
-      <line class="chart-grid" x1="36" y1="{{ g.y }}" x2="{{ chart.width - 12 }}" y2="{{ g.y }}"></line>
-      <text class="chart-axis-label" x="4" y="{{ g.y + 4 }}">{% if fmt=='gbp' %}&pound;{{ (g.value/1000)|round|int }}k{% else %}{{ g.value|round|int }}{% endif %}</text>
-      {% endfor %}
-      {% if chart.target_y is not none %}
-      <line class="chart-target-line" x1="36" y1="{{ chart.target_y }}" x2="{{ chart.width - 12 }}" y2="{{ chart.target_y }}"></line>
-      {% endif %}
-      <polyline class="chart-line" points="{{ chart.polyline }}"></polyline>
-      {% for p in chart.points %}
-      <circle class="chart-point" cx="{{ p.x }}" cy="{{ p.y }}" r="3.5"></circle>
-      <text class="chart-x-label" x="{{ p.x }}" y="{{ chart.height - 10 }}">{{ p.label }}</text>
-      <title>{{ p.label }}: {% if fmt=='gbp' %}&pound;{{ "{:,.0f}".format(p.value) }}{% else %}{{ p.value }}{% endif %}</title>
-      {% endfor %}
-    </svg>
-  </div>
-</div>
-{% endmacro %}
-
-{% macro donut_chart(chart, aria_label) %}
-<div class="donut-wrap">
-  <svg class="donut-svg" width="{{ chart.size }}" height="{{ chart.size }}" viewBox="0 0 {{ chart.size }} {{ chart.size }}" role="img" aria-label="{{ aria_label }}">
-    {% for s in chart.segments %}
-    <path class="donut-seg chart-cat-{{ s.cat }}" d="{{ s.path }}"><title>{{ s.label }}: {{ s.pct }}% ({{ s.value }})</title></path>
-    {% endfor %}
-  </svg>
-  <div class="donut-legend">
-    {% for s in chart.segments %}
-    <div class="donut-legend-item"><span class="donut-swatch chart-cat-{{ s.cat }}"></span>{{ s.label }}<b>{{ s.pct }}%</b></div>
-    {% endfor %}
-  </div>
 </div>
 {% endmacro %}
 
@@ -146,15 +79,15 @@ amber
   <p class="cl-panel-sub">Volume, cost and average severity across the network &mdash; whole register, all time</p>
   <div class="chart-cell">
     <h5>Claim count</h5>
-    {{ bar_chart_svg(depot_count_chart, 'Claim count by depot') }}
+    {{ charts.bar_chart_svg(depot_count_chart, 'Claim count by depot', link_to='claims') }}
   </div>
   <div class="chart-cell section-gap">
     <h5>Incurred cost</h5>
-    {{ bar_chart_svg(depot_incurred_chart, 'Incurred cost by depot', 'gbp') }}
+    {{ charts.bar_chart_svg(depot_incurred_chart, 'Incurred cost by depot', 'gbp', link_to='claims') }}
   </div>
   <div class="chart-cell section-gap">
     <h5>Average cost per claim</h5>
-    {{ bar_chart_svg(depot_avg_chart, 'Average cost per claim by depot', 'gbp') }}
+    {{ charts.bar_chart_svg(depot_avg_chart, 'Average cost per claim by depot', 'gbp', link_to='claims') }}
   </div>
 </div>
 
@@ -164,11 +97,11 @@ amber
   <div class="chart-grid-row">
     <div class="chart-cell">
       <h5>Volume by cause</h5>
-      {{ donut_chart(cause_donut, 'Claim volume by cause') }}
+      {{ charts.donut_chart(cause_donut, 'Claim volume by cause') }}
     </div>
     <div class="chart-cell">
       <h5>Cost by cause</h5>
-      {{ hbar_chart_svg(cause_cost_chart, 'Incurred cost by cause') }}
+      {{ charts.hbar_chart_svg(cause_cost_chart, 'Incurred cost by cause') }}
     </div>
   </div>
 </div>
@@ -179,11 +112,11 @@ amber
   <div class="chart-grid-row">
     <div class="chart-cell">
       <h5>Monthly claim volume</h5>
-      {{ line_chart_svg(trend_volume_chart, 'Monthly claim volume') }}
+      {{ charts.line_chart_svg(trend_volume_chart, 'Monthly claim volume') }}
     </div>
     <div class="chart-cell">
       <h5>Monthly incurred cost</h5>
-      {{ line_chart_svg(trend_cost_chart, 'Monthly incurred cost', 'gbp') }}
+      {{ charts.line_chart_svg(trend_cost_chart, 'Monthly incurred cost', 'gbp') }}
     </div>
   </div>
 </div>
@@ -194,21 +127,21 @@ amber
   <div class="chart-grid-row">
     <div class="chart-cell">
       <h5>Claim status</h5>
-      {{ donut_chart(status_donut, 'Claim status') }}
+      {{ charts.donut_chart(status_donut, 'Claim status') }}
     </div>
     <div class="chart-cell">
       <h5>Fault determination</h5>
-      {{ donut_chart(fault_donut, 'Fault determination') }}
+      {{ charts.donut_chart(fault_donut, 'Fault determination') }}
     </div>
   </div>
   <div class="chart-grid-row section-gap">
     <div class="chart-cell">
       <h5>Days to close (closed claims)</h5>
-      {{ bar_chart_svg(days_to_close_chart, 'Days to close') }}
+      {{ charts.bar_chart_svg(days_to_close_chart, 'Days to close') }}
     </div>
     <div class="chart-cell">
       <h5>Top 10 costliest claims</h5>
-      {{ hbar_chart_svg(top10_chart, 'Top 10 costliest claims') }}
+      {{ charts.hbar_chart_svg(top10_chart, 'Top 10 costliest claims') }}
     </div>
   </div>
 </div>
@@ -226,6 +159,9 @@ amber
         {% for s in weekly_chart.series %}
         <g class="series-group" data-series="{{ loop.index0 }}">
           <polyline class="chart-mline chart-cat-{{ s.cat }}" points="{{ s.polyline }}"></polyline>
+          {% for p in s.points %}
+          <circle class="chart-point mline-point chart-cat-{{ s.cat }}" data-tip-label="{{ s.name }} &middot; w/c {{ p.label }}" data-tip-value="{{ p.value }} open" cx="{{ p.x }}" cy="{{ p.y }}" r="3"></circle>
+          {% endfor %}
         </g>
         {% endfor %}
         {% for xl in weekly_chart.x_labels %}
