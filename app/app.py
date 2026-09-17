@@ -166,6 +166,96 @@ SAMPLE_DRIVERS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Illustrative cover terms for the Portfolio "cover detail" drill-down.
+#
+# The real database holds each cover's headline record (insurer, policy
+# number, premium, period, documents) — see db.py. Policy excesses,
+# exclusions and age-related underwriting rules aren't held anywhere in the
+# app, so the figures below are clearly-labelled illustrative examples of
+# what a real policy wording would set out, keyed by cover name. Where real
+# data does exist — claims already carry a driver_age_band — the age-band
+# table blends that real frequency/cost data with these illustrative excess
+# terms, rather than fabricating the whole thing.
+# ---------------------------------------------------------------------------
+COVER_TERMS = {
+    "Fleet Motor": {
+        "standard_excess": 500,
+        "exclusions": [
+            "Loss or damage while a vehicle is being driven outside the terms of its operator's licence",
+            "Wear and tear, or mechanical or electrical breakdown",
+            "Loss of use, depreciation or other consequential loss",
+            "Any driver not declared on the schedule or outside the permitted driver criteria",
+            "Use for hire or reward other than as declared to insurers",
+        ],
+        "age_bands": [
+            {"band": "18-25", "excess": 500, "loading": 500, "restriction": "Under-21 drivers within this band excluded from Artic HGV; Rigid HGV requires 2 years' LGV experience"},
+            {"band": "26-35", "excess": 500, "loading": 0, "restriction": "None"},
+            {"band": "36-45", "excess": 500, "loading": 0, "restriction": "None"},
+            {"band": "46-55", "excess": 500, "loading": 0, "restriction": "None"},
+            {"band": "56-65", "excess": 500, "loading": 0, "restriction": "None"},
+            {"band": "66+", "excess": 500, "loading": 250, "restriction": "Annual medical declaration required"},
+        ],
+    },
+    "Goods in Transit": {
+        "standard_excess": 250,
+        "exclusions": [
+            "Goods left in an unattended vehicle overnight other than in a secure compound",
+            "Cash, jewellery and other named high-value property unless separately declared",
+            "Loss due to inherent vice, wear, tear or gradual deterioration",
+        ],
+        "age_bands": None,
+    },
+    "Employers' Liability": {
+        "standard_excess": 0,
+        "exclusions": [
+            "Liability required to be insured under a different class of compulsory insurance",
+            "Deliberate acts or wilful neglect of statutory duty",
+        ],
+        "age_bands": None,
+    },
+    "Public & Products Liability": {
+        "standard_excess": 250,
+        "exclusions": [
+            "Product recall costs",
+            "Liability arising outside the United Kingdom",
+            "Pollution or contamination unless sudden, identifiable and accidental",
+        ],
+        "age_bands": None,
+    },
+    "Motor Legal Expenses & Excess Protection": {
+        "standard_excess": 0,
+        "exclusions": [
+            "Claims where the prospects of success are assessed as below 51%",
+            "Costs incurred before the insurer's written acceptance of the claim",
+        ],
+        "age_bands": None,
+    },
+}
+
+
+def page_number_list(page, total_pages, window=2):
+    """Windowed page-number sequence for numbered pagination controls —
+    always the first and last page, plus a `window` of pages either side of
+    the current one, with None marking a skipped gap (e.g. with page=8,
+    total_pages=27: [1, None, 6, 7, 8, 9, 10, None, 27]). Keeps the control
+    usable on lists with many pages instead of rendering every page number."""
+    if total_pages <= 1:
+        return [1]
+    pages = {1, total_pages}
+    for p in range(max(1, page - window), min(total_pages, page + window) + 1):
+        pages.add(p)
+    ordered = sorted(pages)
+    result = []
+    prev = None
+    for p in ordered:
+        if prev is not None and p - prev > 1:
+            result.append(None)
+        result.append(p)
+        prev = p
+    return result
+
+
 def as_of_today(conn):
     meta_as_of = get_meta(conn, "as_of")
     if meta_as_of:
@@ -345,17 +435,32 @@ def portfolio():
 
     forecast = compute_renewal_forecast(conn, on_cover)
 
+    # Register pagination — the stat cards above (and "Total on schedule")
+    # still reflect the full filtered set; only the table itself is sliced.
+    PER_PAGE = 15
+    page = request.args.get("page", 1, type=int) or 1
+    total_matching = len(vehicles)
+    total_pages = max(1, math.ceil(total_matching / PER_PAGE))
+    page = max(1, min(page, total_pages))
+    page_rows = vehicles[(page - 1) * PER_PAGE: page * PER_PAGE]
+    showing_from = (page - 1) * PER_PAGE + 1 if total_matching else 0
+    showing_to = min(page * PER_PAGE, total_matching)
+    page_numbers = page_number_list(page, total_pages)
+
     conn.close()
     return render_template(
         "portfolio.html",
         active_tab="portfolio",
         covers=covers,
         vehicles=vehicles,
+        page_rows=page_rows,
         depots=depots,
         categories=CATEGORIES,
         q=q, depot=depot, category=category, sort_key=sort_key, sort_dir=sort_dir,
         on_cover=on_cover, added_12m=added_12m, removed_12m=removed_12m,
         forecast=forecast,
+        page=page, total_pages=total_pages, total_matching=total_matching,
+        showing_from=showing_from, showing_to=showing_to, page_numbers=page_numbers,
     )
 
 
@@ -440,11 +545,54 @@ def remove_vehicle(vehicle_id):
     return redirect(url_for("portfolio"))
 
 
+@app.route("/portfolio/covers/<cover_id>")
+def cover_detail(cover_id):
+    conn = get_db()
+    cover = conn.execute("SELECT * FROM covers WHERE id=?", (cover_id,)).fetchone()
+    if not cover:
+        conn.close()
+        return redirect(url_for("portfolio"))
+
+    terms = COVER_TERMS.get(cover["name"], {"standard_excess": None, "exclusions": [], "age_bands": None})
+
+    age_band_stats = []
+    if terms.get("age_bands"):
+        real_rows = {
+            r["driver_age_band"]: r
+            for r in conn.execute(
+                """SELECT driver_age_band, COUNT(*) claims, COALESCE(SUM(incurred),0) incurred,
+                   COALESCE(AVG(incurred),0) avg_cost
+                   FROM claims WHERE driver_age_band IS NOT NULL GROUP BY driver_age_band"""
+            ).fetchall()
+        }
+        for band in terms["age_bands"]:
+            r = real_rows.get(band["band"])
+            age_band_stats.append({
+                **band,
+                "claims": r["claims"] if r else 0,
+                "incurred": r["incurred"] if r else 0,
+                "avg_cost": r["avg_cost"] if r else 0,
+            })
+
+    documents = json.loads(cover["documents"]) if cover["documents"] else []
+    policy_period_label = None
+    if cover["period_start"] and cover["period_end"]:
+        policy_period_label = f"{cover['period_start'][:4]}-{cover['period_end'][2:4]}"
+
+    conn.close()
+    return render_template(
+        "cover_detail.html", active_tab="portfolio", cover=cover, terms=terms,
+        age_band_stats=age_band_stats, documents=documents,
+        policy_period_label=policy_period_label,
+    )
+
+
 @app.route("/claims")
 def claims():
     conn = get_db()
     q = request.args.get("q", "").strip()
     depot = request.args.get("depot", "")
+    status = request.args.get("status", "")
     period = request.args.get("period", "all")
     basis = request.args.get("basis", "ground_up")
     sort_key = request.args.get("sort", "loss_date")
@@ -460,6 +608,10 @@ def claims():
     if depot:
         sql += " AND depot=?"
         params.append(depot)
+    if status == "open":
+        sql += " AND closed=0"
+    elif status == "closed":
+        sql += " AND closed=1"
 
     loss_ratio_meta = get_meta(conn, "loss_ratio", {}) or {}
     labels = loss_ratio_meta.get("labels", [])
@@ -522,14 +674,27 @@ def claims():
     page_rows = rows[(page - 1) * PER_PAGE: page * PER_PAGE]
     showing_from = (page - 1) * PER_PAGE + 1 if total_matching else 0
     showing_to = min(page * PER_PAGE, total_matching)
+    page_numbers = page_number_list(page, total_pages)
 
-    # --- Chart sections below mirror the concept dashboard's analysis
-    # panels. They're computed from the whole claims register regardless of
-    # the register's own filters above, matching Fleet Performance's charts.
-    depot_stats_all = conn.execute(
-        """SELECT depot, COUNT(*) claims, SUM(incurred) incurred, AVG(incurred) avg_cost
-           FROM claims GROUP BY depot ORDER BY claims DESC"""
-    ).fetchall()
+    # --- Analysis charts below are computed from the SAME filtered set as
+    # the register (`rows`), not a fresh unfiltered query — so clicking
+    # through from a depot bar (or applying any other filter above) isolates
+    # every chart on this page to that subset, not just the register table.
+    filters_active = bool(q or depot or status or period != "all")
+
+    depot_agg = {}
+    for r in rows:
+        agg = depot_agg.setdefault(r["depot"], {"claims": 0, "incurred": 0.0})
+        agg["claims"] += 1
+        agg["incurred"] += r["incurred"] or 0
+    depot_stats_all = sorted(
+        (
+            {"depot": d, "claims": v["claims"], "incurred": v["incurred"],
+             "avg_cost": (v["incurred"] / v["claims"]) if v["claims"] else 0}
+            for d, v in depot_agg.items()
+        ),
+        key=lambda x: x["claims"], reverse=True,
+    )
     depot_count_chart = build_bar_chart(
         [r["depot"] for r in depot_stats_all], [r["claims"] for r in depot_stats_all]
     )
@@ -540,9 +705,15 @@ def claims():
         [r["depot"] for r in depot_stats_all], [round(r["avg_cost"] or 0) for r in depot_stats_all]
     )
 
-    cause_rows = conn.execute(
-        "SELECT cause, COUNT(*) c, SUM(incurred) s FROM claims GROUP BY cause ORDER BY c DESC"
-    ).fetchall()
+    cause_agg = {}
+    for r in rows:
+        agg = cause_agg.setdefault(r["cause"], {"c": 0, "s": 0.0})
+        agg["c"] += 1
+        agg["s"] += r["incurred"] or 0
+    cause_rows = sorted(
+        ({"cause": c, "c": v["c"], "s": v["s"]} for c, v in cause_agg.items()),
+        key=lambda x: x["c"], reverse=True,
+    )
     top_cause = cause_rows[:5]
     rest_cause = cause_rows[5:]
     cause_vol_labels = [r["cause"] for r in top_cause]
@@ -561,48 +732,47 @@ def claims():
         [r["cause"] for r in cause_cost_sorted], [r["s"] or 0 for r in cause_cost_sorted], width=420
     )
 
-    trend_labels, trend_counts, trend_costs = build_monthly_trend(conn)
+    trend_labels, trend_counts, trend_costs = build_monthly_trend(rows, as_of)
     trend_volume_chart = build_line_chart(trend_labels, trend_counts, width=420)
     trend_cost_chart = build_line_chart(trend_labels, trend_costs, width=420)
 
-    status_rows = conn.execute("SELECT status, COUNT(*) c FROM claims GROUP BY status").fetchall()
     status_groups = {"Open": 0, "Closed": 0, "Litigated": 0}
-    for r in status_rows:
+    for r in rows:
         key = "Open" if r["status"].startswith("Open") else ("Closed" if r["status"].startswith("Closed") else "Litigated")
-        status_groups[key] += r["c"]
+        status_groups[key] += 1
     status_donut = build_donut_chart(list(status_groups.keys()), list(status_groups.values()))
 
-    fault_rows = conn.execute(
-        "SELECT fault, COUNT(*) c FROM claims WHERE fault IS NOT NULL GROUP BY fault ORDER BY c DESC"
-    ).fetchall()
-    fault_donut = build_donut_chart([r["fault"] for r in fault_rows], [r["c"] for r in fault_rows])
+    fault_agg = {}
+    for r in rows:
+        if r["fault"]:
+            fault_agg[r["fault"]] = fault_agg.get(r["fault"], 0) + 1
+    fault_sorted = sorted(fault_agg.items(), key=lambda kv: kv[1], reverse=True)
+    fault_donut = build_donut_chart([k for k, v in fault_sorted], [v for k, v in fault_sorted])
 
-    days_labels, days_counts = build_days_to_close(conn)
+    days_labels, days_counts = build_days_to_close(rows)
     days_to_close_chart = build_bar_chart(days_labels, days_counts, width=420)
 
-    top10_rows = conn.execute(
-        "SELECT ref, depot, incurred FROM claims ORDER BY incurred DESC LIMIT 10"
-    ).fetchall()
+    top10_rows = sorted(rows, key=lambda r: r["incurred"] or 0, reverse=True)[:10]
     top10_chart = build_hbar_chart(
         [f"{r['ref']} · {r['depot']}" for r in top10_rows], [r["incurred"] or 0 for r in top10_rows],
         width=420, row_h=38,
     )
 
-    weekly_labels, weekly_series = build_weekly_open_by_depot(conn)
+    weekly_labels, weekly_series = build_weekly_open_by_depot(rows, as_of)
     weekly_chart = build_multiline_chart(weekly_labels, weekly_series)
 
     conn.close()
     return render_template(
         "claims.html",
         active_tab="claims",
-        rows=page_rows, q=q, depot=depot, depots=depots, period=period, basis=basis,
-        sort_key=sort_key, sort_dir=sort_dir,
+        rows=page_rows, q=q, depot=depot, status=status, depots=depots, period=period, basis=basis,
+        sort_key=sort_key, sort_dir=sort_dir, filters_active=filters_active,
         total_claims=total_claims, total_incurred=total_incurred,
         open_claims=open_claims, closed_claims=closed_claims, avg_cost=avg_cost,
         ccpv=ccpv, overall_lr=overall_lr, target=target, cur_lr=cur_lr, prior_lr=prior_lr,
         current_py=current_py, prior_py=prior_py,
         page=page, total_pages=total_pages, total_matching=total_matching,
-        showing_from=showing_from, showing_to=showing_to,
+        showing_from=showing_from, showing_to=showing_to, page_numbers=page_numbers,
         depot_count_chart=depot_count_chart, depot_incurred_chart=depot_incurred_chart,
         depot_avg_chart=depot_avg_chart,
         cause_donut=cause_donut, cause_cost_chart=cause_cost_chart,
@@ -690,6 +860,61 @@ def new_claim():
     return render_template(
         "claim_form.html", active_tab="claims", depots=depots, causes=causes,
         errors=[], form={"loss_date": today},
+    )
+
+
+# Threshold above which a claim is treated as a "large loss" for the Loss
+# analysis deep-dive below. Chosen from the real incurred distribution
+# (roughly the costliest 8% of claims) rather than an arbitrary round
+# number — see the claim register for the underlying figures.
+LARGE_LOSS_THRESHOLD = 20000
+
+
+@app.route("/claims/loss-analysis")
+def loss_analysis():
+    """Deep-dive behind the Overview page's "Total incurred" figure — large
+    losses over time and where the priciest claims concentrate by cause,
+    built on the same Top-10/cause-cost logic used on the Claims page."""
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM claims").fetchall()
+    conn.close()
+
+    total_incurred = sum(r["incurred"] or 0 for r in rows)
+    large_losses = [r for r in rows if (r["incurred"] or 0) >= LARGE_LOSS_THRESHOLD]
+    large_loss_total = sum(r["incurred"] or 0 for r in large_losses)
+    large_loss_share = (large_loss_total / total_incurred * 100) if total_incurred else 0
+
+    by_py = {}
+    for r in large_losses:
+        py = r["policy_year"] or "Unknown"
+        agg = by_py.setdefault(py, {"c": 0, "s": 0.0})
+        agg["c"] += 1
+        agg["s"] += r["incurred"] or 0
+    py_labels = sorted(by_py.keys())
+    py_counts = [by_py[k]["c"] for k in py_labels]
+    py_values = [by_py[k]["s"] for k in py_labels]
+    large_loss_trend_chart = build_line_chart(py_labels, py_values, width=600)
+    large_loss_count_chart = build_bar_chart(py_labels, py_counts, width=600)
+
+    top_n = sorted(rows, key=lambda r: r["incurred"] or 0, reverse=True)[:20]
+    cause_counts = {}
+    for r in top_n:
+        cause_counts[r["cause"]] = cause_counts.get(r["cause"], 0) + 1
+    cause_concentration_chart = build_donut_chart(list(cause_counts.keys()), list(cause_counts.values()))
+    top20_chart = build_hbar_chart(
+        [f"{r['ref']} · {r['depot']}" for r in top_n], [r["incurred"] or 0 for r in top_n],
+        width=600, row_h=32,
+    )
+
+    return render_template(
+        "loss_analysis.html", active_tab="claims",
+        total_incurred=total_incurred, threshold=LARGE_LOSS_THRESHOLD,
+        large_loss_count=len(large_losses), large_loss_total=large_loss_total,
+        large_loss_share=large_loss_share,
+        large_loss_trend_chart=large_loss_trend_chart,
+        large_loss_count_chart=large_loss_count_chart,
+        cause_concentration_chart=cause_concentration_chart,
+        top20_chart=top20_chart, top_n=top_n,
     )
 
 
@@ -867,17 +1092,17 @@ def build_multiline_chart(labels, series, width=700, height=260, pad=40):
     }
 
 
-def build_weekly_open_by_depot(conn, num_weeks=14):
+def build_weekly_open_by_depot(rows, as_of, num_weeks=14):
     """Open-claims-per-week, per depot, for the last `num_weeks` weeks —
     a snapshot metric computed from loss_date/close_date rather than stored
-    history, since the register doesn't track status changes over time."""
-    as_of = as_of_today(conn)
+    history, since the register doesn't track status changes over time.
+    Takes the caller's (possibly filtered) claim rows directly, so a depot
+    or period filter on the Claims register isolates this chart too."""
     week_ends = [as_of - timedelta(weeks=i) for i in range(num_weeks - 1, -1, -1)]
     week_iso = [w.isoformat() for w in week_ends]
 
-    all_rows = conn.execute("SELECT depot, loss_date, closed, close_date FROM claims").fetchall()
     by_depot = {}
-    for r in all_rows:
+    for r in rows:
         by_depot.setdefault(r["depot"], []).append(r)
 
     series = []
@@ -897,15 +1122,21 @@ def build_weekly_open_by_depot(conn, num_weeks=14):
     return labels, series
 
 
-def build_monthly_trend(conn, months=12):
+def build_monthly_trend(rows, as_of, months=12):
     """Claim volume and incurred cost per calendar month, for the trailing
-    `months` months ending at as_of_today."""
-    rows = conn.execute(
-        "SELECT strftime('%Y-%m', loss_date) ym, COUNT(*) c, SUM(incurred) s FROM claims GROUP BY ym"
-    ).fetchall()
-    by_ym = {r["ym"]: r for r in rows}
+    `months` months ending at as_of. Takes the caller's (possibly filtered)
+    claim rows directly rather than querying the whole table, so an active
+    depot/period/search filter on the Claims register isolates this chart
+    to the same subset."""
+    by_ym = {}
+    for r in rows:
+        ym = (r["loss_date"] or "")[:7]
+        if not ym:
+            continue
+        agg = by_ym.setdefault(ym, {"c": 0, "s": 0.0})
+        agg["c"] += 1
+        agg["s"] += r["incurred"] or 0
 
-    as_of = as_of_today(conn)
     keys = []
     y, m = as_of.year, as_of.month
     for i in range(months - 1, -1, -1):
@@ -918,20 +1149,22 @@ def build_monthly_trend(conn, months=12):
 
     labels, counts, costs = [], [], []
     for k in keys:
-        r = by_ym.get(k)
+        agg = by_ym.get(k)
         labels.append(datetime.strptime(k, "%Y-%m").strftime("%b %y"))
-        counts.append(r["c"] if r else 0)
-        costs.append((r["s"] or 0) if r else 0)
+        counts.append(agg["c"] if agg else 0)
+        costs.append(agg["s"] if agg else 0)
     return labels, counts, costs
 
 
-def build_days_to_close(conn):
+def build_days_to_close(rows):
     """Distribution of days-from-loss-to-close for closed claims, bucketed
-    into fixed ranges for a simple bar chart."""
-    rows = conn.execute("SELECT days_open FROM claims WHERE closed=1").fetchall()
+    into fixed ranges for a simple bar chart. Takes the caller's (possibly
+    filtered) claim rows directly, same reasoning as build_monthly_trend."""
     buckets = [("0-14", 0, 14), ("15-30", 15, 30), ("31-60", 31, 60), ("61-90", 61, 90), ("90+", 91, 10**6)]
     counts = [0] * len(buckets)
     for r in rows:
+        if not r["closed"]:
+            continue
         d = r["days_open"] or 0
         for i, (_, lo, hi) in enumerate(buckets):
             if lo <= d <= hi:
@@ -943,30 +1176,75 @@ def build_days_to_close(conn):
 @app.route("/performance")
 def performance():
     conn = get_db()
-    depot_stats = conn.execute(
-        """SELECT depot, COUNT(*) claims, SUM(incurred) incurred,
-           AVG(incurred) avg_cost, SUM(CASE WHEN closed=0 THEN 1 ELSE 0 END) open
-           FROM claims GROUP BY depot ORDER BY incurred DESC"""
-    ).fetchall()
-    cause_stats = conn.execute(
-        """SELECT cause, COUNT(*) claims, SUM(incurred) incurred
-           FROM claims GROUP BY cause ORDER BY claims DESC LIMIT 6"""
-    ).fetchall()
+    as_of = as_of_today(conn)
+    period = request.args.get("period", "all")
+
     loss_ratio_meta = get_meta(conn, "loss_ratio", {}) or {}
+    labels = loss_ratio_meta.get("labels", [])
+    current_py = labels[-1] if labels else None
+    prior_py = labels[-2] if len(labels) > 1 else None
+
+    sql = "SELECT * FROM claims WHERE 1=1"
+    params = []
+    if period == "policy_year" and current_py:
+        sql += " AND policy_year=?"
+        params.append(current_py)
+    elif period == "prior_policy_year" and prior_py:
+        sql += " AND policy_year=?"
+        params.append(prior_py)
+    elif period == "12m":
+        cutoff = (as_of - timedelta(days=365)).isoformat()
+        sql += " AND loss_date >= ?"
+        params.append(cutoff)
+    period_rows = conn.execute(sql, params).fetchall()
+
+    depot_agg = {}
+    for r in period_rows:
+        agg = depot_agg.setdefault(r["depot"], {"claims": 0, "incurred": 0.0, "open": 0})
+        agg["claims"] += 1
+        agg["incurred"] += r["incurred"] or 0
+        if not r["closed"]:
+            agg["open"] += 1
+    depot_stats = sorted(
+        (
+            {"depot": d, "claims": v["claims"], "incurred": v["incurred"],
+             "avg_cost": (v["incurred"] / v["claims"]) if v["claims"] else 0, "open": v["open"]}
+            for d, v in depot_agg.items()
+        ),
+        key=lambda x: x["incurred"], reverse=True,
+    )
+
+    cause_agg = {}
+    for r in period_rows:
+        agg = cause_agg.setdefault(r["cause"], {"claims": 0, "incurred": 0.0})
+        agg["claims"] += 1
+        agg["incurred"] += r["incurred"] or 0
+    cause_stats = sorted(
+        ({"cause": c, "claims": v["claims"], "incurred": v["incurred"]} for c, v in cause_agg.items()),
+        key=lambda x: x["claims"], reverse=True,
+    )[:6]
+
+    on_cover = conn.execute(
+        "SELECT COUNT(*) c FROM vehicles WHERE status='On cover'"
+    ).fetchone()["c"]
+    forecast = compute_renewal_forecast(conn, on_cover)
+
     conn.close()
 
     target = loss_ratio_meta.get("target", 65.0)
-    lr_chart = build_line_chart(loss_ratio_meta.get("labels", []), loss_ratio_meta.get("loss_ratio", []), target=target)
+    lr_chart = build_line_chart(labels, loss_ratio_meta.get("loss_ratio", []), target=target)
     depot_chart = build_bar_chart([r["depot"] for r in depot_stats], [r["incurred"] or 0 for r in depot_stats])
     cause_chart = build_hbar_chart([r["cause"] for r in cause_stats], [r["incurred"] or 0 for r in cause_stats])
 
     return render_template(
         "performance.html", active_tab="performance",
+        period=period, current_py=current_py, prior_py=prior_py,
         depot_stats=depot_stats, cause_stats=cause_stats,
         loss_ratio=loss_ratio_meta.get("overall_loss_ratio"),
         target=target,
         lr_chart=lr_chart, depot_chart=depot_chart, cause_chart=cause_chart,
-        watchlist=build_watchlist(),
+        forecast=forecast,
+        top_drivers=build_top_drivers(5),
     )
 
 
@@ -1077,8 +1355,7 @@ def explorer_driver(depot, slug):
 def build_watchlist(tier="high"):
     """Fleet-wide sample drivers at a given risk tier, across all depots.
 
-    Shared by /roadmap and /performance so both surfaces show the same
-    illustrative "needs review" list rather than maintaining two copies.
+    Used by /roadmap for its illustrative "needs review" list.
     """
     out = []
     for depot, drivers in SAMPLE_DRIVERS.items():
@@ -1086,6 +1363,21 @@ def build_watchlist(tier="high"):
             if d["tier"] == tier:
                 out.append({**d, "depot": depot})
     return out
+
+
+def build_top_drivers(limit=5):
+    """Fleet-wide sample drivers ranked by a combined telematics risk score
+    (sum of the four sample metrics), across every depot and tier — the
+    "top N drivers causing deterioration on the risk" ranking for Fleet
+    Performance, rather than just the small "high" tier subset build_watchlist
+    returns. Illustrative sample data throughout (see SAMPLE_DRIVERS)."""
+    out = []
+    for depot, drivers in SAMPLE_DRIVERS.items():
+        for d in drivers:
+            score = sum(d["metrics"].values())
+            out.append({**d, "depot": depot, "score": score})
+    out.sort(key=lambda d: d["score"], reverse=True)
+    return out[:limit]
 
 
 @app.route("/roadmap")
