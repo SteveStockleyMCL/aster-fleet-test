@@ -227,6 +227,75 @@ def overview():
     )
 
 
+def compute_renewal_forecast(conn, vehicles_on_cover):
+    """Illustrative Fleet Motor renewal forecast, modelled from this policy
+    year's loss ratio and claim frequency against target. Mirrors the same
+    method used in the original portal concept — not a quotation."""
+    loss_ratio_meta = get_meta(conn, "loss_ratio", {}) or {}
+    labels = loss_ratio_meta.get("labels", [])
+    lr_list = loss_ratio_meta.get("loss_ratio", [])
+    earned_premium = loss_ratio_meta.get("earned_premium", [])
+    target = loss_ratio_meta.get("target", 65.0)
+    if not labels or not lr_list or not earned_premium:
+        return None
+
+    current_py = labels[-1]
+    prior_py = labels[-2] if len(labels) > 1 else None
+    current_lr = lr_list[-1]
+    prior_lr = lr_list[-2] if len(lr_list) > 1 else None
+    current_premium = earned_premium[-1]
+
+    vehicles = max(1, vehicles_on_cover)
+    claims_this_year = conn.execute(
+        "SELECT COUNT(*) c FROM claims WHERE policy_year=?", (current_py,)
+    ).fetchone()["c"]
+    claims_prior_year = (
+        conn.execute(
+            "SELECT COUNT(*) c FROM claims WHERE policy_year=?", (prior_py,)
+        ).fetchone()["c"]
+        if prior_py
+        else 0
+    )
+
+    frequency = claims_this_year / vehicles
+    prior_frequency = claims_prior_year / vehicles
+    freq_delta_pts = (frequency - prior_frequency) * 100
+
+    lr_gap = current_lr - target
+    base_movement = lr_gap * 0.5 if lr_gap > 0 else max(lr_gap * 0.3, -8)
+    freq_adj = freq_delta_pts * 0.4 if freq_delta_pts > 0 else freq_delta_pts * 0.25
+    mid = max(-10, min(35, base_movement + freq_adj))
+    low = round(mid - 3)
+    high = round(mid + 3)
+    low_premium = current_premium * (1 + low / 100)
+    high_premium = current_premium * (1 + high / 100)
+
+    return {
+        "current_py": current_py,
+        "current_lr": current_lr,
+        "prior_lr": prior_lr,
+        "target": target,
+        "frequency": frequency,
+        "prior_frequency": prior_frequency,
+        "current_premium": current_premium,
+        "low": low,
+        "high": high,
+        "low_premium": low_premium,
+        "high_premium": high_premium,
+        "rate_per_vehicle": current_premium / vehicles,
+        "low_rate_per_vehicle": low_premium / vehicles,
+        "high_rate_per_vehicle": high_premium / vehicles,
+        "claims_this_year": claims_this_year,
+        "vehicles": vehicles,
+        "direction": "running above" if current_lr > target else "tracking below",
+        "freq_trend": (
+            "risen" if frequency > prior_frequency
+            else "eased" if frequency < prior_frequency
+            else "held steady"
+        ),
+    }
+
+
 @app.route("/portfolio")
 def portfolio():
     conn = get_db()
@@ -274,6 +343,8 @@ def portfolio():
         (cutoff,),
     ).fetchone()["c"]
 
+    forecast = compute_renewal_forecast(conn, on_cover)
+
     conn.close()
     return render_template(
         "portfolio.html",
@@ -284,6 +355,7 @@ def portfolio():
         categories=CATEGORIES,
         q=q, depot=depot, category=category, sort_key=sort_key, sort_dir=sort_dir,
         on_cover=on_cover, added_12m=added_12m, removed_12m=removed_12m,
+        forecast=forecast,
     )
 
 
