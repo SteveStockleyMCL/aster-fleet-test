@@ -67,8 +67,10 @@ a.reset-link{text-decoration:none;}
 .chart-line{fill:none;stroke:var(--gold);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;}
 .chart-point{fill:var(--gold);stroke:var(--panel);stroke-width:1.5;}
 .chart-x-label{fill:var(--ink-soft);font-size:10px;text-anchor:middle;}
-.chart-bar{fill:var(--gold);}
-.chart-bar-alt{fill:var(--good);}
+.chart-bar{fill:var(--gold);cursor:pointer;transition:filter .12s;}
+.chart-bar-alt{fill:var(--good);cursor:pointer;transition:filter .12s;}
+.chart-bar.is-hovered,.chart-bar-alt.is-hovered{filter:brightness(1.15);}
+.chart-point{cursor:pointer;}
 .chart-hbar-label{fill:var(--ink);font-size:11px;font-weight:700;}
 .chart-hbar-value{fill:var(--ink-soft);font-size:11px;font-variant-numeric:tabular-nums;}
 .chart-legend{display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--ink-soft);flex-wrap:wrap;}
@@ -108,13 +110,32 @@ a.reset-link{text-decoration:none;}
 
 .donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
 .donut-svg{flex:none;}
-.donut-seg{stroke:var(--panel);stroke-width:2;}
+.donut-seg{stroke:var(--panel);stroke-width:2;cursor:pointer;transition:filter .12s;}
+.donut-seg.is-hovered{filter:brightness(1.15);}
+
+/* Shared floating chart tooltip (static/js/charts.js) — one fixed div
+   reused by every chart, positioned on mousemove, styled to match the
+   dark "ink" surface used elsewhere in the design (driver-modal overlay,
+   status pills, etc). */
+#chart-tooltip{
+  position:fixed;display:none;pointer-events:none;z-index:200;
+  background:var(--ink);color:var(--cream);
+  padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.55;
+  box-shadow:var(--shadow);max-width:230px;
+}
+#chart-tooltip b{color:var(--gold-soft);}
 .donut-legend{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--ink-soft);min-width:150px;}
 .donut-legend-item{display:flex;align-items:center;gap:8px;}
 .donut-legend-item b{color:var(--ink);font-variant-numeric:tabular-nums;margin-left:auto;padding-left:10px;}
 .donut-swatch{width:10px;height:10px;border-radius:3px;flex:none;}
 
 .chart-mline{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;transition:opacity .15s;}
+
+/* Hover-only points on the weekly multi-line chart — invisible until
+   hovered, purely as tooltip targets along the line (matches the original
+   concept mockup's own hand-built chart interaction). */
+.mline-point{opacity:0;transition:opacity .1s;}
+.mline-point.is-hovered{opacity:1;}
 .chart-legend-toggle{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
 .legend-chip{
   display:inline-flex;align-items:center;gap:6px;
