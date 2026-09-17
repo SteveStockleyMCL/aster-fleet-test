@@ -52,14 +52,14 @@
 
 <div class="cl-panel">
   <h4>Covers</h4>
-  <p class="cl-panel-sub">Active policies on this account</p>
+  <p class="cl-panel-sub">Active policies on this account &mdash; click a cover for excesses, exclusions and documents</p>
   <div class="table-wrap">
     <table class="claims-table">
       <thead><tr><th>Cover</th><th>Insurer</th><th>Policy number</th><th>Period</th><th style="text-align:right;">Premium</th><th>Status</th></tr></thead>
       <tbody>
         {% for c in covers %}
-        <tr>
-          <td>{{ c.name }}</td>
+        <tr class="tbl-row-link" onclick="window.location='{{ url_for('cover_detail', cover_id=c.id) }}';" style="cursor:pointer;">
+          <td><a style="color:inherit;font-weight:700;text-decoration:none;" href="{{ url_for('cover_detail', cover_id=c.id) }}">{{ c.name }}</a></td>
           <td>{{ c.insurer }}</td>
           <td>{{ c.policy_number }}</td>
           <td>{{ c.period_start }} &ndash; {{ c.period_end }}</td>
@@ -72,11 +72,11 @@
   </div>
 </div>
 
-<div class="section-gap">
+<div class="cl-panel section-gap">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
-      <h4 style="margin:0 0 2px;font-size:16px;">Fleet register</h4>
-      <p style="color:var(--ink-soft);font-size:12.5px;margin:0;">Live insured vehicle schedule &mdash; {{ on_cover }} vehicles currently on cover.</p>
+      <h4 style="margin:0 0 2px;">Fleet register</h4>
+      <p class="cl-panel-sub" style="margin:0;">Live insured vehicle schedule &mdash; {{ on_cover }} vehicles currently on cover.</p>
     </div>
     <a class="ncf-submit" style="text-decoration:none;" href="{{ url_for('new_vehicle') }}">+ Add vehicle</a>
   </div>
@@ -126,7 +126,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for v in vehicles %}
+        {% for v in page_rows %}
         <tr>
           <td><b>{{ v.reg }}</b></td>
           <td>{{ v.cover_start }}</td>
@@ -148,6 +148,21 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  <div class="pagination">
+    <div class="pagination-info">Showing {{ showing_from }}&ndash;{{ showing_to }} of {{ total_matching }} vehicles</div>
+    <div class="pagination-links">
+      <a class="{{ 'disabled' if page <= 1 else '' }}" href="{{ url_for('portfolio', q=q, depot=depot, category=category, sort=sort_key, dir=sort_dir, page=page-1) }}">&larr; Previous</a>
+      {% for p in page_numbers %}
+      {% if p is none %}
+      <span class="pagination-ellipsis">&hellip;</span>
+      {% else %}
+      <a class="{{ 'disabled' if p == page else '' }}" href="{{ url_for('portfolio', q=q, depot=depot, category=category, sort=sort_key, dir=sort_dir, page=p) }}">{{ p }}</a>
+      {% endif %}
+      {% endfor %}
+      <a class="{{ 'disabled' if page >= total_pages else '' }}" href="{{ url_for('portfolio', q=q, depot=depot, category=category, sort=sort_key, dir=sort_dir, page=page+1) }}">Next &rarr;</a>
+    </div>
   </div>
 </div>
 {% endblock %}
