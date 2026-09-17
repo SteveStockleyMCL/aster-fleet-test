@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{% block title %}Aster{% endblock %} &middot; Aster*</title>
+<script>
+try {
+  var savedTheme = localStorage.getItem('aster-theme');
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }
+} catch (e) {}
+</script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
@@ -17,6 +25,10 @@
       {% if renewal_days is not none %}
       <div class="topbar-renewal {{ 'tb-soon' if renewal_days <= 30 else '' }}">Days to renewal <b>{{ renewal_days }}</b></div>
       {% endif %}
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      </button>
       <a href="{{ url_for('logout') }}" class="portal-logout">Log out</a>
     </div>
   </div>
@@ -42,6 +54,46 @@
 </div>
 
 <footer class="portal-foot">Live test build on real data entry &mdash; Acme Fleet Services. Explorer and Roadmap use real depot and vehicle data where it exists in the database; driver-level detail is illustrative until a telematics feed is connected.</footer>
+
+<script>
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  var sun = btn.querySelector('.icon-sun');
+  var moon = btn.querySelector('.icon-moon');
+
+  function currentTheme() {
+    var explicit = document.documentElement.getAttribute('data-theme');
+    if (explicit === 'dark' || explicit === 'light') return explicit;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function setHidden(el, isHidden) {
+    // Plain attribute manipulation rather than the `.hidden` IDL property:
+    // that property doesn't reliably reflect on SVG elements in every
+    // browser, which left both icons permanently hidden.
+    if (isHidden) { el.setAttribute('hidden', ''); }
+    else { el.removeAttribute('hidden'); }
+  }
+
+  function sync() {
+    var t = currentTheme();
+    setHidden(sun, t !== 'dark');
+    setHidden(moon, t === 'dark');
+  }
+
+  sync();
+
+  btn.addEventListener('click', function () {
+    var next = currentTheme() === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('aster-theme', next); } catch (e) {}
+    sync();
+    document.dispatchEvent(new CustomEvent('aster-theme-change', { detail: next }));
+  });
+})();
+</script>
+{% block scripts %}{% endblock %}
 
 </body>
 </html>
