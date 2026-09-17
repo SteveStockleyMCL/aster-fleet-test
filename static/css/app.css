@@ -151,6 +151,20 @@ a.reset-link{text-decoration:none;}
 .pagination-links a{color:var(--ink);font-weight:700;text-decoration:none;padding:6px 14px;border:1px solid var(--line);border-radius:8px;}
 .pagination-links a:hover{border-color:var(--gold);color:var(--gold);}
 .pagination-links a.disabled{opacity:.4;pointer-events:none;}
+.pagination-ellipsis{padding:6px 4px;color:var(--ink-soft);}
+
+.excl-list{margin:0;padding-left:20px;font-size:13px;color:var(--ink-soft);line-height:1.9;}
+.excl-list li{margin-bottom:2px;}
+
+.tbl-row-link:hover{background:var(--cream2);}
+
+/* Clickable Overview stat cards — same card, wrapped in a link, with just
+   enough hover feedback to read as clickable without changing the layout
+   Steve mocked up. */
+.stat-card-link{display:block;text-decoration:none;color:inherit;transition:transform .12s,box-shadow .12s;}
+.stat-card-link:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.1);}
+.stat-card-link .stat-card{cursor:pointer;}
+.stat-card-cta{font-size:11px;color:var(--gold);font-weight:700;margin-top:8px;display:flex;align-items:center;gap:3px;}
 
 .expand-cell{width:30px;padding-right:0 !important;}
 .row-expand-btn{background:none;border:none;cursor:pointer;color:var(--ink-soft);padding:4px;display:flex;}
