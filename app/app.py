@@ -532,6 +532,95 @@ def new_claim():
     )
 
 
+def build_line_chart(labels, values, target=None, width=600, height=220, pad=36):
+    """Geometry for a simple SVG line chart, computed server-side so the
+    template only has to draw pre-positioned points — no JS charting
+    library required."""
+    n = len(values)
+    if n == 0:
+        return None
+    numeric = [v for v in values if v is not None]
+    vmax = max(numeric + ([target] if target is not None else [0]) + [0])
+    vmax = vmax * 1.15 if vmax else 1
+
+    def x_at(i):
+        if n == 1:
+            return pad + (width - 2 * pad) / 2
+        return pad + i * (width - 2 * pad) / (n - 1)
+
+    def y_at(v):
+        return height - pad - (v / vmax) * (height - 2 * pad)
+
+    points = [
+        {"x": round(x_at(i), 1), "y": round(y_at(v), 1), "label": lbl, "value": v}
+        for i, (lbl, v) in enumerate(zip(labels, values)) if v is not None
+    ]
+    steps = 4
+    grid = [
+        {"y": round(height - pad - s / steps * (height - 2 * pad), 1), "value": round(vmax * s / steps, 1)}
+        for s in range(steps + 1)
+    ]
+    return {
+        "width": width, "height": height,
+        "polyline": " ".join(f"{p['x']},{p['y']}" for p in points),
+        "points": points,
+        "target_y": round(y_at(target), 1) if target is not None else None,
+        "grid": grid,
+    }
+
+
+def build_bar_chart(labels, values, width=600, height=220, pad_left=44, pad_right=12, pad_top=12, pad_bottom=28):
+    """Geometry for a simple vertical SVG bar chart."""
+    n = len(values)
+    plot_w = width - pad_left - pad_right
+    plot_h = height - pad_top - pad_bottom
+    vmax = max(values) if values else 0
+    vmax = vmax * 1.15 if vmax else 1
+    gap = plot_w / n if n else 0
+    bar_w = gap * 0.55
+    bars = []
+    for i, (lbl, v) in enumerate(zip(labels, values)):
+        bar_h = (v / vmax) * plot_h if vmax else 0
+        x = pad_left + i * gap + (gap - bar_w) / 2
+        y = pad_top + plot_h - bar_h
+        bars.append({
+            "x": round(x, 1), "y": round(y, 1), "w": round(bar_w, 1), "h": round(bar_h, 1),
+            "label": lbl, "value": v, "label_x": round(x + bar_w / 2, 1),
+        })
+    steps = 4
+    grid = [
+        {"y": round(pad_top + plot_h - s / steps * plot_h, 1), "value": round(vmax * s / steps)}
+        for s in range(steps + 1)
+    ]
+    return {
+        "width": width, "height": height, "bars": bars, "grid": grid,
+        "axis_x1": pad_left, "axis_x2": width - pad_right, "base_y": pad_top + plot_h,
+    }
+
+
+def build_hbar_chart(labels, values, width=600, row_h=46, pad_x=4, pad_top=8, pad_bottom=8):
+    """Geometry for a horizontal bar-per-row chart, with the label sitting
+    above its own bar rather than in a side column — the cause-of-loss
+    labels are long enough that a fixed label column would either clip
+    them or force the bars into an unreasonably narrow strip."""
+    n = len(values)
+    height = pad_top + pad_bottom + n * row_h
+    plot_w = width - 2 * pad_x
+    vmax = max(values) if values else 0
+    vmax = vmax * 1.15 if vmax else 1
+    bars = []
+    for i, (lbl, v) in enumerate(zip(labels, values)):
+        row_top = pad_top + i * row_h
+        bar_w = (v / vmax) * plot_w if vmax else 0
+        bars.append({
+            "label": lbl, "value": v,
+            "label_x": pad_x, "label_y": round(row_top + 12, 1),
+            "x": pad_x, "y": round(row_top + 20, 1), "w": round(bar_w, 1), "h": 16,
+            "value_x": round(pad_x + bar_w + 8, 1), "value_y": round(row_top + 32, 1),
+        })
+    return {"width": width, "height": height, "bars": bars}
+
+
 @app.route("/performance")
 def performance():
     conn = get_db()
@@ -546,11 +635,19 @@ def performance():
     ).fetchall()
     loss_ratio_meta = get_meta(conn, "loss_ratio", {}) or {}
     conn.close()
+
+    target = loss_ratio_meta.get("target", 65.0)
+    lr_chart = build_line_chart(loss_ratio_meta.get("labels", []), loss_ratio_meta.get("loss_ratio", []), target=target)
+    depot_chart = build_bar_chart([r["depot"] for r in depot_stats], [r["incurred"] or 0 for r in depot_stats])
+    cause_chart = build_hbar_chart([r["cause"] for r in cause_stats], [r["incurred"] or 0 for r in cause_stats])
+
     return render_template(
         "performance.html", active_tab="performance",
         depot_stats=depot_stats, cause_stats=cause_stats,
         loss_ratio=loss_ratio_meta.get("overall_loss_ratio"),
-        target=loss_ratio_meta.get("target", 65.0),
+        target=target,
+        lr_chart=lr_chart, depot_chart=depot_chart, cause_chart=cause_chart,
+        watchlist=build_watchlist(),
     )
 
 
@@ -658,14 +755,23 @@ def explorer_driver(depot, slug):
     )
 
 
-@app.route("/roadmap")
-def roadmap():
-    watchlist = []
+def build_watchlist(tier="high"):
+    """Fleet-wide sample drivers at a given risk tier, across all depots.
+
+    Shared by /roadmap and /performance so both surfaces show the same
+    illustrative "needs review" list rather than maintaining two copies.
+    """
+    out = []
     for depot, drivers in SAMPLE_DRIVERS.items():
         for d in drivers:
-            if d["tier"] == "high":
-                watchlist.append({**d, "depot": depot})
-    return render_template("roadmap.html", active_tab="roadmap", watchlist=watchlist)
+            if d["tier"] == tier:
+                out.append({**d, "depot": depot})
+    return out
+
+
+@app.route("/roadmap")
+def roadmap():
+    return render_template("roadmap.html", active_tab="roadmap", watchlist=build_watchlist())
 
 
 # Called at import time (not just under `python app.py`) so the database is
