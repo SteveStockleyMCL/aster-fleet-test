@@ -8,28 +8,43 @@
 </div>
 
 <div class="stat-row">
-  <div class="stat-card">
-    <div class="stat-label">Vehicles on cover</div>
-    <div class="stat-value">{{ vehicle_count }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Total claims</div>
-    <div class="stat-value">{{ total_claims }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Total incurred</div>
-    <div class="stat-value">&pound;{{ "{:,.0f}".format(total_incurred) }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Open claims</div>
-    <div class="stat-value">{{ open_claims }}</div>
-  </div>
+  <a class="stat-card-link" href="{{ url_for('portfolio') }}">
+    <div class="stat-card">
+      <div class="stat-label">Vehicles on cover</div>
+      <div class="stat-value">{{ vehicle_count }}</div>
+      <div class="stat-card-cta">View fleet list &rarr;</div>
+    </div>
+  </a>
+  <a class="stat-card-link" href="{{ url_for('claims') }}">
+    <div class="stat-card">
+      <div class="stat-label">Total claims</div>
+      <div class="stat-value">{{ total_claims }}</div>
+      <div class="stat-card-cta">View claims breakdown &rarr;</div>
+    </div>
+  </a>
+  <a class="stat-card-link" href="{{ url_for('loss_analysis') }}">
+    <div class="stat-card">
+      <div class="stat-label">Total incurred</div>
+      <div class="stat-value">&pound;{{ "{:,.0f}".format(total_incurred) }}</div>
+      <div class="stat-card-cta">Loss analysis &rarr;</div>
+    </div>
+  </a>
+  <a class="stat-card-link" href="{{ url_for('claims', status='open') }}">
+    <div class="stat-card">
+      <div class="stat-label">Open claims</div>
+      <div class="stat-value">{{ open_claims }}</div>
+      <div class="stat-card-cta">View open claims &rarr;</div>
+    </div>
+  </a>
   {% if loss_ratio_pct %}
-  <div class="stat-card">
-    <div class="stat-label">Loss ratio</div>
-    <div class="stat-value">{{ "%.1f"|format(loss_ratio_pct) }}%</div>
-    <div class="stat-sub">target {{ "%.1f"|format(loss_ratio_target) }}%</div>
-  </div>
+  <a class="stat-card-link" href="{{ url_for('performance') }}#renewal">
+    <div class="stat-card">
+      <div class="stat-label">Loss ratio</div>
+      <div class="stat-value">{{ "%.1f"|format(loss_ratio_pct) }}%</div>
+      <div class="stat-sub">target {{ "%.1f"|format(loss_ratio_target) }}%</div>
+      <div class="stat-card-cta">Fleet performance &amp; renewal &rarr;</div>
+    </div>
+  </a>
   {% endif %}
 </div>
 
