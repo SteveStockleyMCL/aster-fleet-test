@@ -36,15 +36,16 @@ amber
 <div class="page-head">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
     <div>
+      <span class="page-eyebrow"><span class="peb-mark">*</span> Register &amp; loss ratio</span>
       <h2>Claims</h2>
-      <p>Register, cost and loss-ratio performance for Acme Fleet Services &mdash; real database behind every figure below.</p>
+      <p>Register, cost and loss-ratio performance for Acme Fleet Services &mdash; <span class="accent">real database behind every figure below</span>.</p>
     </div>
     <a class="ncf-submit" style="text-decoration:none;" href="{{ url_for('new_claim') }}">+ New claim</a>
   </div>
 </div>
 
 <div class="stat-row stat-row-6">
-  {{ rag_card('Loss ratio (current year)', ('%.1f'|format(cur_lr) ~ '%') if cur_lr is not none else '&mdash;', ('target ' ~ '%.1f'|format(target) ~ '% &middot; ' ) ~ delta_span(cur_lr, prior_lr, true), rag_level(cur_lr, target, true)) }}
+  {{ rag_card('Loss ratio (current year)', ('%.1f'|format(cur_lr) ~ '%') if cur_lr is not none else '—', ('target ' ~ '%.1f'|format(target) ~ '% · ' ) ~ delta_span(cur_lr, prior_lr, true), rag_level(cur_lr, target, true)) }}
   <div class="stat-card">
     <div class="stat-label">Total claims{{ ' &mdash; ' ~ period if period != 'all' }}</div>
     <div class="stat-value">{{ total_claims }}</div>
