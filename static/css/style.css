@@ -429,8 +429,8 @@ tr.expand-row td{background:var(--cream2);padding:0;border-bottom:1px solid var(
 .ncf-field input:focus,.ncf-field select:focus,.ncf-field textarea:focus{outline:2px solid var(--gold);outline-offset:1px;}
 .ncf-charcount{align-self:flex-end;font-size:11px;color:var(--ink-soft);}
 .ncf-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;}
-.ncf-cancel{background:none;border:1px solid var(--line);color:var(--ink-soft);border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;}
-.ncf-submit{background:var(--gold);border:none;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;}
+.ncf-cancel{display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;background:none;border:1px solid var(--line);color:var(--ink-soft);border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;}
+.ncf-submit{display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;background:var(--gold);border:none;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;}
 .ncf-success{text-align:center;padding:20px 4px 6px;}
 .ncf-success svg{width:44px;height:44px;color:var(--good);margin-bottom:10px;}
 .ncf-success h4{font-size:17px;margin:0 0 8px;}
