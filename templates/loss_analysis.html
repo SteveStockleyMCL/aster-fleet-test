@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% import "_chart_macros.html" as charts %}
+{% block title %}Loss analysis{% endblock %}
+{% block content %}
+<div class="crumb-bar">
+  <a class="crumb" href="{{ url_for('overview') }}">Overview</a>
+  <span class="crumb-sep">/</span>
+  <a class="crumb" href="{{ url_for('claims') }}">Claims</a>
+  <span class="crumb-sep">/</span>
+  <span class="crumb current">Loss analysis</span>
+</div>
+
+<div class="page-head">
+  <span class="page-eyebrow"><span class="peb-mark">*</span> Deep dive</span>
+  <h2>Loss analysis</h2>
+  <p>What&rsquo;s behind the total incurred figure &mdash; where the large losses sit, and what&rsquo;s driving the most expensive claims &mdash; <span class="accent">computed live from the claims register</span>.</p>
+</div>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-label">Total incurred, all time</div>
+    <div class="stat-value">&pound;{{ "{:,.0f}".format(total_incurred) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Large losses
+      <span class="stat-info" tabindex="0">i<span class="stat-info-tip">Claims at or above &pound;{{ "{:,.0f}".format(threshold) }} incurred &mdash; roughly the costliest tenth of the register, chosen from the real cost distribution.</span></span>
+    </div>
+    <div class="stat-value">{{ large_loss_count }}</div>
+    <div class="stat-sub">&ge; &pound;{{ "{:,.0f}".format(threshold) }} incurred</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Large-loss total</div>
+    <div class="stat-value">&pound;{{ "{:,.0f}".format(large_loss_total) }}</div>
+    <div class="stat-sub">{{ '%.0f'|format(large_loss_share) }}% of total incurred</div>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Large losses over time</h4>
+  <p class="cl-panel-sub">Claims &ge; &pound;{{ "{:,.0f}".format(threshold) }}, by policy year</p>
+  <div class="chart-grid-row">
+    <div class="chart-cell">
+      <h5>Total incurred</h5>
+      {{ charts.line_chart_svg(large_loss_trend_chart, 'Large-loss total by policy year', 'gbp') }}
+    </div>
+    <div class="chart-cell">
+      <h5>Number of large losses</h5>
+      {{ charts.bar_chart_svg(large_loss_count_chart, 'Number of large losses by policy year') }}
+    </div>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Cause concentration &mdash; top 20 costliest claims</h4>
+  <p class="cl-panel-sub">Where the priciest claims in the register cluster by cause</p>
+  {{ charts.donut_chart(cause_concentration_chart, 'Cause concentration among the 20 costliest claims') }}
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Top 20 costliest claims</h4>
+  <p class="cl-panel-sub">Ranked by incurred cost, whole register, all time</p>
+  {{ charts.hbar_chart_svg(top20_chart, 'Top 20 costliest claims') }}
+  <div class="table-wrap section-gap">
+    <table class="claims-table">
+      <thead><tr><th>Reference</th><th>Depot</th><th>Cause</th><th>Status</th><th style="text-align:right;">Incurred</th></tr></thead>
+      <tbody>
+        {% for r in top_n %}
+        <tr>
+          <td><b>{{ r.ref }}</b></td>
+          <td>{{ r.depot }}</td>
+          <td>{{ r.cause }}</td>
+          <td><span class="status-pill {{ 'closed' if r.closed else 'removed' }}">{{ r.status }}</span></td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">&pound;{{ "{:,.0f}".format(r.incurred or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
