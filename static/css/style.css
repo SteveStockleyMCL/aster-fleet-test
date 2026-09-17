@@ -1,6 +1,6 @@
 
 :root{
-  --ink:#023059;
+  --ink:#041f3d;
   --ink-soft:#4f6672;
   --grey:#8a95a0;
   --cream:#fbf4e9;
@@ -109,7 +109,7 @@ button{font-family:inherit;}
 .site-bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;}
 .site-bg svg{width:100%;height:100%;display:block;}
 .portal-client{text-align:right;font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
-.portal-head-right{display:flex;align-items:center;gap:14px;}
+.portal-head-right{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:10px 14px;}
 .topbar-renewal{
   display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
   background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);color:#fff;
@@ -465,7 +465,7 @@ tr.expand-row td{background:var(--cream2);padding:0;border-bottom:1px solid var(
 
 /* ---------- roadmap: Aster brand + flowing road motif ---------- */
 :root{
-  --aster-navy:#023059;
+  --aster-navy:#041f3d;
   --aster-red:#ff3b45;
   --aster-road:#adadad;
   --aster-road-edge:#888888;
