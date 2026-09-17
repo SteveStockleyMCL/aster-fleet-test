@@ -17,6 +17,7 @@
       {% if renewal_days is not none %}
       <div class="topbar-renewal {{ 'tb-soon' if renewal_days <= 30 else '' }}">Days to renewal <b>{{ renewal_days }}</b></div>
       {% endif %}
+      <a href="{{ url_for('logout') }}" class="portal-logout">Log out</a>
     </div>
   </div>
   <div class="portal-tabs-row">
