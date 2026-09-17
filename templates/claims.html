@@ -32,6 +32,74 @@ amber
 </div>
 {% endmacro %}
 
+{% macro bar_chart_svg(chart, aria_label, fmt='num') %}
+<div class="chart-scroll">
+  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
+    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
+      {% for g in chart.grid %}
+      <line class="chart-grid" x1="{{ chart.axis_x1 }}" y1="{{ g.y }}" x2="{{ chart.axis_x2 }}" y2="{{ g.y }}"></line>
+      {% endfor %}
+      {% for b in chart.bars %}
+      <rect class="chart-bar" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
+      <text class="chart-x-label" x="{{ b.label_x }}" y="{{ chart.height - 8 }}">{{ b.label }}</text>
+      <title>{{ b.label }}: {% if fmt=='gbp' %}&pound;{{ "{:,.0f}".format(b.value) }}{% else %}{{ b.value }}{% endif %}</title>
+      {% endfor %}
+    </svg>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro hbar_chart_svg(chart, aria_label, fmt='gbp') %}
+<div class="chart-scroll">
+  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
+    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
+      {% for b in chart.bars %}
+      <text class="chart-hbar-label" x="{{ b.label_x }}" y="{{ b.label_y }}">{{ b.label }}</text>
+      <rect class="chart-bar chart-bar-alt" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"></rect>
+      <text class="chart-hbar-value" x="{{ b.value_x }}" y="{{ b.value_y }}">{% if fmt=='gbp' %}&pound;{{ "{:,.0f}".format(b.value) }}{% else %}{{ b.value }}{% endif %}</text>
+      {% endfor %}
+    </svg>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro line_chart_svg(chart, aria_label, fmt='num') %}
+<div class="chart-scroll">
+  <div class="chart-frame" style="aspect-ratio:{{ chart.width }}/{{ chart.height }};">
+    <svg class="chart-svg" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ aria_label }}">
+      {% for g in chart.grid %}
+      <line class="chart-grid" x1="36" y1="{{ g.y }}" x2="{{ chart.width - 12 }}" y2="{{ g.y }}"></line>
+      <text class="chart-axis-label" x="4" y="{{ g.y + 4 }}">{% if fmt=='gbp' %}&pound;{{ (g.value/1000)|round|int }}k{% else %}{{ g.value|round|int }}{% endif %}</text>
+      {% endfor %}
+      {% if chart.target_y is not none %}
+      <line class="chart-target-line" x1="36" y1="{{ chart.target_y }}" x2="{{ chart.width - 12 }}" y2="{{ chart.target_y }}"></line>
+      {% endif %}
+      <polyline class="chart-line" points="{{ chart.polyline }}"></polyline>
+      {% for p in chart.points %}
+      <circle class="chart-point" cx="{{ p.x }}" cy="{{ p.y }}" r="3.5"></circle>
+      <text class="chart-x-label" x="{{ p.x }}" y="{{ chart.height - 10 }}">{{ p.label }}</text>
+      <title>{{ p.label }}: {% if fmt=='gbp' %}&pound;{{ "{:,.0f}".format(p.value) }}{% else %}{{ p.value }}{% endif %}</title>
+      {% endfor %}
+    </svg>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro donut_chart(chart, aria_label) %}
+<div class="donut-wrap">
+  <svg class="donut-svg" width="{{ chart.size }}" height="{{ chart.size }}" viewBox="0 0 {{ chart.size }} {{ chart.size }}" role="img" aria-label="{{ aria_label }}">
+    {% for s in chart.segments %}
+    <path class="donut-seg chart-cat-{{ s.cat }}" d="{{ s.path }}"><title>{{ s.label }}: {{ s.pct }}% ({{ s.value }})</title></path>
+    {% endfor %}
+  </svg>
+  <div class="donut-legend">
+    {% for s in chart.segments %}
+    <div class="donut-legend-item"><span class="donut-swatch chart-cat-{{ s.cat }}"></span>{{ s.label }}<b>{{ s.pct }}%</b></div>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}
+
 {% block content %}
 <div class="page-head">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -73,7 +141,107 @@ amber
   </div>
 </div>
 
-<div class="filter-bar" style="margin-top:8px;">
+<div class="cl-panel section-gap">
+  <h4>Claims by depot</h4>
+  <p class="cl-panel-sub">Volume, cost and average severity across the network &mdash; whole register, all time</p>
+  <div class="chart-cell">
+    <h5>Claim count</h5>
+    {{ bar_chart_svg(depot_count_chart, 'Claim count by depot') }}
+  </div>
+  <div class="chart-cell section-gap">
+    <h5>Incurred cost</h5>
+    {{ bar_chart_svg(depot_incurred_chart, 'Incurred cost by depot', 'gbp') }}
+  </div>
+  <div class="chart-cell section-gap">
+    <h5>Average cost per claim</h5>
+    {{ bar_chart_svg(depot_avg_chart, 'Average cost per claim by depot', 'gbp') }}
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Claims by cause</h4>
+  <p class="cl-panel-sub">Share of claim volume, and where the cost concentrates</p>
+  <div class="chart-grid-row">
+    <div class="chart-cell">
+      <h5>Volume by cause</h5>
+      {{ donut_chart(cause_donut, 'Claim volume by cause') }}
+    </div>
+    <div class="chart-cell">
+      <h5>Cost by cause</h5>
+      {{ hbar_chart_svg(cause_cost_chart, 'Incurred cost by cause') }}
+    </div>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Trends</h4>
+  <p class="cl-panel-sub">Claim volume and incurred cost over the last 12 months</p>
+  <div class="chart-grid-row">
+    <div class="chart-cell">
+      <h5>Monthly claim volume</h5>
+      {{ line_chart_svg(trend_volume_chart, 'Monthly claim volume') }}
+    </div>
+    <div class="chart-cell">
+      <h5>Monthly incurred cost</h5>
+      {{ line_chart_svg(trend_cost_chart, 'Monthly incurred cost', 'gbp') }}
+    </div>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Status &amp; fault</h4>
+  <p class="cl-panel-sub">Where claims sit today, how liability is split, how long closed claims take to settle, and the highest-cost claims in the portfolio</p>
+  <div class="chart-grid-row">
+    <div class="chart-cell">
+      <h5>Claim status</h5>
+      {{ donut_chart(status_donut, 'Claim status') }}
+    </div>
+    <div class="chart-cell">
+      <h5>Fault determination</h5>
+      {{ donut_chart(fault_donut, 'Fault determination') }}
+    </div>
+  </div>
+  <div class="chart-grid-row section-gap">
+    <div class="chart-cell">
+      <h5>Days to close (closed claims)</h5>
+      {{ bar_chart_svg(days_to_close_chart, 'Days to close') }}
+    </div>
+    <div class="chart-cell">
+      <h5>Top 10 costliest claims</h5>
+      {{ hbar_chart_svg(top10_chart, 'Top 10 costliest claims') }}
+    </div>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Weekly risk trend</h4>
+  <p class="cl-panel-sub">Open claims per week, by depot &mdash; click a depot below to show or hide its line</p>
+  <div class="chart-scroll">
+    <div class="chart-frame weekly-chart" style="aspect-ratio:{{ weekly_chart.width }}/{{ weekly_chart.height }};min-width:700px;">
+      <svg class="chart-svg" viewBox="0 0 {{ weekly_chart.width }} {{ weekly_chart.height }}" role="img" aria-label="Open claims per week by depot">
+        {% for g in weekly_chart.grid %}
+        <line class="chart-grid" x1="{{ weekly_chart.axis_x1 }}" y1="{{ g.y }}" x2="{{ weekly_chart.axis_x2 }}" y2="{{ g.y }}"></line>
+        <text class="chart-axis-label" x="4" y="{{ g.y + 4 }}">{{ g.value }}</text>
+        {% endfor %}
+        {% for s in weekly_chart.series %}
+        <g class="series-group" data-series="{{ loop.index0 }}">
+          <polyline class="chart-mline chart-cat-{{ s.cat }}" points="{{ s.polyline }}"></polyline>
+        </g>
+        {% endfor %}
+        {% for xl in weekly_chart.x_labels %}
+        <text class="chart-x-label" x="{{ xl.x }}" y="{{ weekly_chart.height - 10 }}">{{ xl.label }}</text>
+        {% endfor %}
+      </svg>
+    </div>
+  </div>
+  <div class="chart-legend-toggle">
+    {% for s in weekly_chart.series %}
+    <button type="button" class="legend-chip" data-series="{{ loop.index0 }}"><span class="donut-swatch chart-cat-{{ s.cat }}"></span>{{ s.name }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="filter-bar" style="margin-top:28px;">
   <form method="get" class="filter-row" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;">
     <input type="text" class="reg-search" name="q" value="{{ q }}" placeholder="Search reference, depot or cause&hellip;">
     <div class="filter-group"><span class="filter-group-label">Depot</span>
@@ -109,6 +277,7 @@ amber
   <table class="claims-table">
     <thead>
       <tr>
+        <th></th>
         {% macro sort_link(key, label) -%}
         <th><a style="color:inherit;text-decoration:none;" href="{{ url_for('claims', q=q, depot=depot, period=period, basis=basis, sort=key, dir=('asc' if sort_key==key and sort_dir=='desc' else 'desc')) }}">{{ label }} {% if sort_key==key %}{{ '▲' if sort_dir=='asc' else '▼' }}{% endif %}</a></th>
         {%- endmacro %}
@@ -124,7 +293,8 @@ amber
     </thead>
     <tbody>
       {% for r in rows %}
-      <tr>
+      <tr class="data-row">
+        <td class="expand-cell"><button type="button" class="row-expand-btn" aria-label="Show cost breakdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button></td>
         <td><b>{{ r.ref }}</b></td>
         <td>{{ r.depot }}</td>
         <td>{{ r.vehicle_type or '&mdash;' }}</td>
@@ -134,10 +304,55 @@ amber
         <td>{{ r.fault or '&mdash;' }}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums;">&pound;{{ "{:,.0f}".format(r.incurred or 0) }}</td>
       </tr>
+      <tr class="claim-detail-row" hidden>
+        <td colspan="9">
+          <div class="claim-detail">
+            <div class="claim-detail-item">Paid<b>&pound;{{ "{:,.0f}".format(r.paid or 0) }}</b></div>
+            <div class="claim-detail-item">Reserve<b>&pound;{{ "{:,.0f}".format(r.reserve or 0) }}</b></div>
+            <div class="claim-detail-item">Incurred<b>&pound;{{ "{:,.0f}".format(r.incurred or 0) }}</b></div>
+            <div class="claim-detail-item">Policy year<b>{{ r.policy_year or '&mdash;' }}</b></div>
+            <div class="claim-detail-item">Own damage<b>{{ r.own_damage or '&mdash;' }}</b></div>
+            <div class="claim-detail-item">Days open<b>{{ r.days_open }}</b></div>
+          </div>
+          {% if r.notes %}<p class="claim-detail-notes">{{ r.notes }}</p>{% endif %}
+        </td>
+      </tr>
       {% else %}
-      <tr><td colspan="8" class="empty-note">No claims match these filters.</td></tr>
+      <tr><td colspan="9" class="empty-note">No claims match these filters.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+<div class="pagination">
+  <div class="pagination-info">Showing {{ showing_from }}&ndash;{{ showing_to }} of {{ total_matching }} claims</div>
+  <div class="pagination-links">
+    <a class="{{ 'disabled' if page <= 1 else '' }}" href="{{ url_for('claims', q=q, depot=depot, period=period, basis=basis, sort=sort_key, dir=sort_dir, page=page-1) }}">&larr; Previous</a>
+    <a class="{{ 'disabled' if page >= total_pages else '' }}" href="{{ url_for('claims', q=q, depot=depot, period=period, basis=basis, sort=sort_key, dir=sort_dir, page=page+1) }}">Next &rarr;</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.row-expand-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var tr = btn.closest('tr');
+    var detail = tr.nextElementSibling;
+    if (!detail || !detail.classList.contains('claim-detail-row')) return;
+    var willOpen = detail.hidden;
+    detail.hidden = !willOpen;
+    btn.classList.toggle('open', willOpen);
+  });
+});
+
+document.querySelectorAll('.legend-chip[data-series]').forEach(function (chip) {
+  chip.addEventListener('click', function () {
+    var idx = chip.dataset.series;
+    var group = document.querySelector('.weekly-chart .series-group[data-series="' + idx + '"]');
+    var nowDimmed = chip.classList.toggle('dimmed');
+    if (group) group.style.display = nowDimmed ? 'none' : '';
+  });
+});
+</script>
 {% endblock %}
