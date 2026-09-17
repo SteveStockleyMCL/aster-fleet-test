@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ driver.name }} · Explorer{% endblock %}
+{% block content %}
+<div class="crumb-bar">
+  <a class="crumb" href="{{ url_for('explorer') }}">Explorer</a>
+  <span class="crumb-sep">/</span>
+  <a class="crumb" href="{{ url_for('explorer_depot', depot=depot) }}">{{ depot }}</a>
+  <span class="crumb-sep">/</span>
+  <span class="crumb current">{{ driver.name }}</span>
+</div>
+
+<div class="dprofile">
+  <div class="dm-illustrative">Illustrative only &mdash; a sample profile showing what Aster will build from real telematics and claims data once your telematics provider is connected. Not a real person.</div>
+
+  <div class="dp-head">
+    <div class="dp-avatar">{{ driver.name.split('.')[-1].strip()[:2]|upper }}</div>
+    <div class="dp-head-text">
+      <h2>{{ driver.name }}</h2>
+      <div class="dp-sub">{{ driver.role }} &middot; {{ depot }}</div>
+    </div>
+    <span class="rm-driver-chip {{ driver.tier }}">{{ {'high':'Review','med':'Monitor','low':'Good'}[driver.tier] }}</span>
+  </div>
+
+  <div class="dp-facts">
+    <div class="dp-fact"><span>Length of service</span><b>{{ driver.service }}</b></div>
+    <div class="dp-fact"><span>Licence</span><b>{{ driver.licence }}</b></div>
+    <div class="dp-fact"><span>Endorsements</span><b>{{ driver.points }} points</b></div>
+  </div>
+
+  <div class="dp-block">
+    <h4>Risk behaviour</h4>
+    <div class="dp-metrics">
+      {% for label, pct in driver.metrics.items() %}
+      <div>
+        <div class="dp-metric-label"><span>{{ label }}</span><b>{{ pct }}</b></div>
+        <div class="dp-metric-track"><div class="dp-metric-fill" style="width:{{ pct }}%;background:{{ 'var(--gold)' if pct >= 60 else ('var(--warn)' if pct >= 35 else 'var(--good)') }};"></div></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="dp-block">
+    <h4>Assessment</h4>
+    <p class="dp-blurb">{{ driver.blurb }}</p>
+  </div>
+
+  <div class="dp-block">
+    <h4>Suggested action</h4>
+    <ul class="dp-actions">
+      {% for a in driver.actions %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
