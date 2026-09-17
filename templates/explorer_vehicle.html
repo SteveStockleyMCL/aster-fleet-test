@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ vehicle.reg }} · Explorer{% endblock %}
+{% block content %}
+<div class="crumb-bar">
+  <a class="crumb" href="{{ url_for('explorer') }}">Explorer</a>
+  <span class="crumb-sep">/</span>
+  <a class="crumb" href="{{ url_for('explorer_depot', depot=depot) }}">{{ depot }}</a>
+  <span class="crumb-sep">/</span>
+  <span class="crumb current">{{ vehicle.reg }}</span>
+</div>
+
+<div class="vinfo-card">
+  <div class="vinfo-top">
+    <div>
+      <div class="vinfo-reg">{{ vehicle.reg }}</div>
+      <div class="vinfo-model">{{ (vehicle.make + ' ' + vehicle.model) if vehicle.make else vehicle.model }} &middot; {{ vehicle.category }}</div>
+    </div>
+    <span class="status-pill {{ 'closed' if vehicle.status=='On cover' else 'removed' }}">{{ vehicle.status }}</span>
+  </div>
+  <div class="vinfo-facts">
+    <div class="vinfo-fact">Depot<b>{{ vehicle.depot }}</b></div>
+    <div class="vinfo-fact">On cover since<b>{{ vehicle.cover_start }}</b></div>
+    <div class="vinfo-fact">Year<b>{{ vehicle.year or '—' }}</b></div>
+    <div class="vinfo-fact">GVW<b>{{ vehicle.gvw or '—' }}</b></div>
+    <div class="vinfo-fact">Value<b>{{ '£{:,.0f}'.format(vehicle.value) if vehicle.value else '—' }}</b></div>
+  </div>
+</div>
+
+<div class="section-label">Claims recorded for this vehicle type at {{ depot }}</div>
+<div class="illustrative-note">Claims aren't yet linked to an individual vehicle in the database — these are the {{ vehicle.category|lower }} claims recorded at this depot, as the closest real match available today.</div>
+<table class="log-table">
+  <thead><tr><th>Reference</th><th>Loss date</th><th>Cause</th><th>Status</th><th style="text-align:right;">Incurred</th></tr></thead>
+  <tbody>
+    {% for c in related_claims %}
+    <tr>
+      <td>{{ c.ref }}</td>
+      <td>{{ c.loss_date }}</td>
+      <td>{{ c.cause }}</td>
+      <td><span class="status-pill {{ 'closed' if c.closed else 'open' }}">{{ c.status }}</span></td>
+      <td class="num">&pound;{{ "{:,.0f}".format(c.incurred) }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="empty-note">No {{ vehicle.category|lower }} claims recorded at this depot.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if drivers %}
+<div class="section-label" style="margin-top:26px;">Sample drivers at this depot</div>
+<div class="illustrative-note">Illustrative only &mdash; vehicles aren't yet linked to specific drivers. Shown here to preview that link once telematics data is connected.</div>
+<div class="list-panel">
+  {% for d in drivers %}
+  <a class="list-row" style="text-decoration:none;color:inherit;" href="{{ url_for('explorer_driver', depot=depot, slug=d.slug) }}">
+    <div class="list-avatar">{{ d.name.split('.')[-1].strip()[:2]|upper }}</div>
+    <div class="list-main">
+      <div class="list-title">{{ d.name }}</div>
+      <div class="list-sub">{{ d.role }}</div>
+    </div>
+    <span class="list-chip {{ d.tier }}">{{ {'high':'Review','med':'Monitor','low':'Good'}[d.tier] }}</span>
+    <svg class="list-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
