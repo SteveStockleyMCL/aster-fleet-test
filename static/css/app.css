@@ -15,3 +15,9 @@ a.reset-link{text-decoration:none;}
 .portal-tabs a.portal-tab{text-decoration:none;display:inline-block;}
 .table-wrap{overflow-x:auto;}
 .empty-note{padding:24px;text-align:center;color:var(--ink-soft);font-size:13px;}
+
+/* Roadmap: the mockup's zig-zag phase layout assumed a full-bleed panel;
+   in the real app's plain content column we keep phases in a single,
+   wider left-aligned stack instead. */
+.roadmap{max-width:720px;}
+.rm-phase{max-width:100%;}
