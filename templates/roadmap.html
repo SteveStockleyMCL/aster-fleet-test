@@ -2,12 +2,12 @@
 {% block title %}Roadmap{% endblock %}
 {% block content %}
 <div class="page-head">
+  <span class="page-eyebrow"><span class="peb-mark">*</span> The road ahead</span>
   <h2>Roadmap</h2>
-  <p>Aster is being built in phases. Here's what's live, what's next, and the platform it's building toward. Click any phase for more detail.</p>
+  <p>Aster is being built in phases. <span class="accent">Here's what's live, what's next</span>, and the platform it's building toward. Click any phase for more detail.</p>
 </div>
 
 <div class="roadmap" id="roadmap-list">
-  <div class="roadmap-topline"><span class="rt-word">Aster</span><span class="rt-ast">*</span><span class="rt-label">The road ahead</span></div>
   <p class="roadmap-lead">Three phases, one route &mdash; from what's live today to the platform this is building toward. Click any marker for the detail.</p>
 
   <div class="rm-phase now" data-open="true">
@@ -77,4 +77,3 @@ document.querySelectorAll('.rm-phase').forEach(function(phase){
 });
 </script>
 {% endblock %}
-
