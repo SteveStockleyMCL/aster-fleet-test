@@ -3,9 +3,23 @@
 {% block title %}Fleet Performance{% endblock %}
 {% block content %}
 <div class="page-head">
-  <span class="page-eyebrow"><span class="peb-mark">*</span> Depots, causes &amp; risk</span>
-  <h2>Fleet performance</h2>
-  <p>Where cost and frequency are concentrated across depots and causes &mdash; <span class="accent">computed live from the claims register</span>.</p>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <span class="page-eyebrow"><span class="peb-mark">*</span> Depots, causes &amp; risk</span>
+      <h2>Fleet performance</h2>
+      <p>Where cost and frequency are concentrated across depots and causes &mdash; <span class="accent">computed live from the claims register</span>.</p>
+    </div>
+    <form class="filter-bar" method="get" style="margin:0;">
+      <div class="filter-group"><span class="filter-group-label">Period</span>
+        <select name="period" onchange="this.form.submit()">
+          <option value="all" {{ 'selected' if period=='all' }}>All time</option>
+          <option value="policy_year" {{ 'selected' if period=='policy_year' }}>Current policy period{{ ' (' ~ current_py ~ ')' if current_py }}</option>
+          <option value="prior_policy_year" {{ 'selected' if period=='prior_policy_year' }}>Previous policy period{{ ' (' ~ prior_py ~ ')' if prior_py }}</option>
+          <option value="12m" {{ 'selected' if period=='12m' }}>Previous 12 months</option>
+        </select>
+      </div>
+    </form>
+  </div>
 </div>
 
 <div class="stat-row">
@@ -24,6 +38,45 @@
     <div class="stat-sub">{{ cause_stats[0].claims if cause_stats else 0 }} claims</div>
   </div>
 </div>
+
+{% if forecast %}
+<div class="cl-panel section-gap" id="renewal">
+  <h4>Renewal position &mdash; Fleet Motor, {{ forecast.current_py }}</h4>
+  <p class="cl-panel-sub">Premium paid to date, current position against target, and an indicative run-off loss ratio and renewal premium &mdash; illustrative, not a quotation.</p>
+  <div class="stat-row stat-row-5">
+    <div class="stat-card">
+      <div class="stat-label">Premium paid to date</div>
+      <div class="stat-value">&pound;{{ "{:,.0f}".format(forecast.current_premium) }}</div>
+      <div class="stat-sub">{{ forecast.current_py }} Fleet Motor premium</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Current loss ratio</div>
+      <div class="stat-value">{{ "%.1f"|format(forecast.current_lr) }}%</div>
+      <div class="stat-sub">{{ forecast.direction }} target ({{ "%.1f"|format(forecast.target) }}%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Indicative run-off loss ratio
+        <span class="stat-info" tabindex="0">i<span class="stat-info-tip">Where this policy year's loss ratio would likely land once all open claims fully develop, projected from the current position — not the final, audited figure.</span></span>
+      </div>
+      <div class="stat-value">{{ "%.1f"|format(forecast.current_lr * 1.08) }}%</div>
+      <div class="stat-sub">projected from current position</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Suggested movement</div>
+      <div class="stat-value">{{ '+' if forecast.low >= 0 else '' }}{{ forecast.low }}% to {{ '+' if forecast.high >= 0 else '' }}{{ forecast.high }}%</div>
+      <div class="stat-sub">at next Fleet Motor renewal</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Indicative renewal premium</div>
+      <div class="stat-value">&pound;{{ "{:,.0f}".format(forecast.low_premium) }}&ndash;&pound;{{ "{:,.0f}".format(forecast.high_premium) }}</div>
+      <div class="stat-sub">vs &pound;{{ "{:,.0f}".format(forecast.current_premium) }} now</div>
+    </div>
+  </div>
+  <p style="color:var(--ink-soft);font-size:12.5px;line-height:1.6;margin:14px 0 0;">
+    Illustrative only: modelled from this policy year's loss ratio and claim frequency against target, the same method used on the Portfolio renewal panel. Insurers price on their own claims experience view and underwriting appetite at the time, not this model.
+  </p>
+</div>
+{% endif %}
 
 {% if lr_chart %}
 <div class="cl-panel section-gap">
@@ -84,22 +137,22 @@
 </div>
 
 <div class="cl-panel section-gap">
-  <h4>Driver risk</h4>
-  <p class="cl-panel-sub">Fleet-wide sample watchlist &mdash; drivers flagged for review across every depot</p>
+  <h4>Top 5 drivers &mdash; deteriorating risk</h4>
+  <p class="cl-panel-sub">Fleet-wide, ranked by combined telematics risk score across every depot</p>
   <div class="illustrative-note">Illustrative only &mdash; sample profiles showing what this panel will surface once a telematics provider is connected. Not real people or real behaviour data. Full detail on each depot's Drivers tab in Explorer.</div>
   <div class="list-panel">
-    {% for d in watchlist %}
+    {% for d in top_drivers %}
     <a class="list-row" style="text-decoration:none;color:inherit;" href="{{ url_for('explorer_driver', depot=d.depot, slug=d.slug) }}">
-      <div class="list-avatar">{{ d.name.split('.')[-1].strip()[:2]|upper }}</div>
+      <div class="list-avatar">{{ loop.index }}</div>
       <div class="list-main">
         <div class="list-title">{{ d.name }}</div>
-        <div class="list-sub">{{ d.depot }} &middot; {{ d.role }}</div>
+        <div class="list-sub">{{ d.depot }} &middot; {{ d.role }} &middot; risk score {{ d.score }}</div>
       </div>
-      <span class="list-chip {{ d.tier }}">Review</span>
+      <span class="list-chip {{ d.tier }}">{{ {'high':'Review','med':'Monitor','low':'Good'}[d.tier] }}</span>
       <svg class="list-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
     </a>
     {% else %}
-    <div class="empty-note">No sample drivers currently flagged for review.</div>
+    <div class="empty-note">No sample drivers configured.</div>
     {% endfor %}
   </div>
 </div>
