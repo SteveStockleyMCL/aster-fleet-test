@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import math
 from datetime import datetime, date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -439,16 +440,104 @@ def claims():
         "SELECT DISTINCT depot FROM claims ORDER BY depot"
     ).fetchall()]
 
+    # Register pagination — stats above are computed from the full filtered
+    # set (`rows`); only the table itself is sliced to one page.
+    PER_PAGE = 25
+    page = request.args.get("page", 1, type=int) or 1
+    total_matching = len(rows)
+    total_pages = max(1, math.ceil(total_matching / PER_PAGE))
+    page = max(1, min(page, total_pages))
+    page_rows = rows[(page - 1) * PER_PAGE: page * PER_PAGE]
+    showing_from = (page - 1) * PER_PAGE + 1 if total_matching else 0
+    showing_to = min(page * PER_PAGE, total_matching)
+
+    # --- Chart sections below mirror the concept dashboard's analysis
+    # panels. They're computed from the whole claims register regardless of
+    # the register's own filters above, matching Fleet Performance's charts.
+    depot_stats_all = conn.execute(
+        """SELECT depot, COUNT(*) claims, SUM(incurred) incurred, AVG(incurred) avg_cost
+           FROM claims GROUP BY depot ORDER BY claims DESC"""
+    ).fetchall()
+    depot_count_chart = build_bar_chart(
+        [r["depot"] for r in depot_stats_all], [r["claims"] for r in depot_stats_all]
+    )
+    depot_incurred_chart = build_bar_chart(
+        [r["depot"] for r in depot_stats_all], [r["incurred"] or 0 for r in depot_stats_all]
+    )
+    depot_avg_chart = build_bar_chart(
+        [r["depot"] for r in depot_stats_all], [round(r["avg_cost"] or 0) for r in depot_stats_all]
+    )
+
+    cause_rows = conn.execute(
+        "SELECT cause, COUNT(*) c, SUM(incurred) s FROM claims GROUP BY cause ORDER BY c DESC"
+    ).fetchall()
+    top_cause = cause_rows[:5]
+    rest_cause = cause_rows[5:]
+    cause_vol_labels = [r["cause"] for r in top_cause]
+    cause_vol_values = [r["c"] for r in top_cause]
+    if rest_cause:
+        cause_vol_labels.append("Other")
+        cause_vol_values.append(sum(r["c"] for r in rest_cause))
+    cause_donut = build_donut_chart(cause_vol_labels, cause_vol_values)
+
+    # These charts render two-up in a grid cell (see claims.html's
+    # chart-grid-row), so they're built at a narrower intrinsic width than
+    # the single-chart 600px default — sized to fill their column without
+    # needing horizontal scroll at typical desktop widths.
+    cause_cost_sorted = sorted(cause_rows, key=lambda r: r["s"] or 0, reverse=True)[:6]
+    cause_cost_chart = build_hbar_chart(
+        [r["cause"] for r in cause_cost_sorted], [r["s"] or 0 for r in cause_cost_sorted], width=420
+    )
+
+    trend_labels, trend_counts, trend_costs = build_monthly_trend(conn)
+    trend_volume_chart = build_line_chart(trend_labels, trend_counts, width=420)
+    trend_cost_chart = build_line_chart(trend_labels, trend_costs, width=420)
+
+    status_rows = conn.execute("SELECT status, COUNT(*) c FROM claims GROUP BY status").fetchall()
+    status_groups = {"Open": 0, "Closed": 0, "Litigated": 0}
+    for r in status_rows:
+        key = "Open" if r["status"].startswith("Open") else ("Closed" if r["status"].startswith("Closed") else "Litigated")
+        status_groups[key] += r["c"]
+    status_donut = build_donut_chart(list(status_groups.keys()), list(status_groups.values()))
+
+    fault_rows = conn.execute(
+        "SELECT fault, COUNT(*) c FROM claims WHERE fault IS NOT NULL GROUP BY fault ORDER BY c DESC"
+    ).fetchall()
+    fault_donut = build_donut_chart([r["fault"] for r in fault_rows], [r["c"] for r in fault_rows])
+
+    days_labels, days_counts = build_days_to_close(conn)
+    days_to_close_chart = build_bar_chart(days_labels, days_counts, width=420)
+
+    top10_rows = conn.execute(
+        "SELECT ref, depot, incurred FROM claims ORDER BY incurred DESC LIMIT 10"
+    ).fetchall()
+    top10_chart = build_hbar_chart(
+        [f"{r['ref']} · {r['depot']}" for r in top10_rows], [r["incurred"] or 0 for r in top10_rows],
+        width=420, row_h=38,
+    )
+
+    weekly_labels, weekly_series = build_weekly_open_by_depot(conn)
+    weekly_chart = build_multiline_chart(weekly_labels, weekly_series)
+
     conn.close()
     return render_template(
         "claims.html",
         active_tab="claims",
-        rows=rows, q=q, depot=depot, depots=depots, period=period, basis=basis,
+        rows=page_rows, q=q, depot=depot, depots=depots, period=period, basis=basis,
         sort_key=sort_key, sort_dir=sort_dir,
         total_claims=total_claims, total_incurred=total_incurred,
         open_claims=open_claims, closed_claims=closed_claims, avg_cost=avg_cost,
         ccpv=ccpv, overall_lr=overall_lr, target=target, cur_lr=cur_lr, prior_lr=prior_lr,
         current_py=current_py, prior_py=prior_py,
+        page=page, total_pages=total_pages, total_matching=total_matching,
+        showing_from=showing_from, showing_to=showing_to,
+        depot_count_chart=depot_count_chart, depot_incurred_chart=depot_incurred_chart,
+        depot_avg_chart=depot_avg_chart,
+        cause_donut=cause_donut, cause_cost_chart=cause_cost_chart,
+        trend_volume_chart=trend_volume_chart, trend_cost_chart=trend_cost_chart,
+        status_donut=status_donut, fault_donut=fault_donut,
+        days_to_close_chart=days_to_close_chart, top10_chart=top10_chart,
+        weekly_chart=weekly_chart,
     )
 
 
@@ -619,6 +708,163 @@ def build_hbar_chart(labels, values, width=600, row_h=46, pad_x=4, pad_top=8, pa
             "value_x": round(pad_x + bar_w + 8, 1), "value_y": round(row_top + 32, 1),
         })
     return {"width": width, "height": height, "bars": bars}
+
+
+def build_donut_chart(labels, values, size=170, thickness=28):
+    """Geometry for a simple SVG donut chart — one arc path per category,
+    computed as plain polar-to-cartesian coordinates so no charting library
+    is needed. Segments are coloured by position via the shared chart-cat-N
+    CSS classes (see app.css), which also drive the multi-line chart and
+    keep every chart's palette consistent."""
+    total = sum(values) or 1
+    cx = cy = size / 2
+    r = size / 2 - 3
+    r_inner = r - thickness
+    start_angle = -90.0
+
+    def polar(radius, deg):
+        rad = math.radians(deg)
+        return (cx + radius * math.cos(rad), cy + radius * math.sin(rad))
+
+    segments = []
+    for i, (lbl, v) in enumerate(zip(labels, values)):
+        frac = v / total
+        angle = min(frac * 360, 359.99)  # avoid a degenerate 360° arc
+        end_angle = start_angle + angle
+        large_arc = 1 if angle > 180 else 0
+        x1, y1 = polar(r, start_angle)
+        x2, y2 = polar(r, end_angle)
+        x3, y3 = polar(r_inner, end_angle)
+        x4, y4 = polar(r_inner, start_angle)
+        path = (
+            f"M {x1:.2f},{y1:.2f} "
+            f"A {r:.2f},{r:.2f} 0 {large_arc} 1 {x2:.2f},{y2:.2f} "
+            f"L {x3:.2f},{y3:.2f} "
+            f"A {r_inner:.2f},{r_inner:.2f} 0 {large_arc} 0 {x4:.2f},{y4:.2f} Z"
+        )
+        segments.append({
+            "label": lbl, "value": v, "pct": round(v / total * 100, 1),
+            "path": path, "cat": i % 6,
+        })
+        start_angle += frac * 360
+    return {"size": size, "segments": segments, "total": total}
+
+
+def build_multiline_chart(labels, series, width=700, height=260, pad=40):
+    """Geometry for a multi-series SVG line chart (one line per depot for
+    the weekly risk trend) sharing one x-axis and y-scale. Each series gets
+    a chart-cat-N colour class so it works with the same legend/toggle
+    pattern as the donut charts."""
+    n = len(labels)
+    all_values = [v for s in series for v in s["values"]]
+    vmax = max(all_values) if all_values else 0
+    vmax = vmax * 1.15 if vmax else 1
+
+    def x_at(i):
+        if n <= 1:
+            return pad + (width - 2 * pad) / 2
+        return pad + i * (width - 2 * pad) / (n - 1)
+
+    def y_at(v):
+        return height - pad - (v / vmax) * (height - 2 * pad)
+
+    out_series = []
+    for idx, s in enumerate(series):
+        points = [{"x": round(x_at(i), 1), "y": round(y_at(v), 1)} for i, v in enumerate(s["values"])]
+        out_series.append({
+            "name": s["name"], "cat": idx % 6,
+            "polyline": " ".join(f"{p['x']},{p['y']}" for p in points),
+        })
+    steps = 4
+    grid = [
+        {"y": round(height - pad - st / steps * (height - 2 * pad), 1), "value": round(vmax * st / steps)}
+        for st in range(steps + 1)
+    ]
+    # Showing every label at typical widths (14+ weeks) is too cramped, so
+    # thin them out — always keep the first and last so the range is clear.
+    show_every = 2 if n > 8 else 1
+    x_labels = [
+        {"x": round(x_at(i), 1), "label": lbl}
+        for i, lbl in enumerate(labels)
+        if i % show_every == 0 or i == n - 1
+    ]
+    return {
+        "width": width, "height": height, "series": out_series, "grid": grid,
+        "x_labels": x_labels, "axis_x1": pad, "axis_x2": width - pad,
+    }
+
+
+def build_weekly_open_by_depot(conn, num_weeks=14):
+    """Open-claims-per-week, per depot, for the last `num_weeks` weeks —
+    a snapshot metric computed from loss_date/close_date rather than stored
+    history, since the register doesn't track status changes over time."""
+    as_of = as_of_today(conn)
+    week_ends = [as_of - timedelta(weeks=i) for i in range(num_weeks - 1, -1, -1)]
+    week_iso = [w.isoformat() for w in week_ends]
+
+    all_rows = conn.execute("SELECT depot, loss_date, closed, close_date FROM claims").fetchall()
+    by_depot = {}
+    for r in all_rows:
+        by_depot.setdefault(r["depot"], []).append(r)
+
+    series = []
+    for depot in sorted(by_depot.keys()):
+        depot_rows = by_depot[depot]
+        values = []
+        for w_iso in week_iso:
+            count = sum(
+                1 for r in depot_rows
+                if r["loss_date"] <= w_iso
+                and (not r["closed"] or not r["close_date"] or r["close_date"] > w_iso)
+            )
+            values.append(count)
+        series.append({"name": depot, "values": values})
+
+    labels = [w.strftime("%d %b") for w in week_ends]
+    return labels, series
+
+
+def build_monthly_trend(conn, months=12):
+    """Claim volume and incurred cost per calendar month, for the trailing
+    `months` months ending at as_of_today."""
+    rows = conn.execute(
+        "SELECT strftime('%Y-%m', loss_date) ym, COUNT(*) c, SUM(incurred) s FROM claims GROUP BY ym"
+    ).fetchall()
+    by_ym = {r["ym"]: r for r in rows}
+
+    as_of = as_of_today(conn)
+    keys = []
+    y, m = as_of.year, as_of.month
+    for i in range(months - 1, -1, -1):
+        mm = m - i
+        yy = y
+        while mm <= 0:
+            mm += 12
+            yy -= 1
+        keys.append(f"{yy:04d}-{mm:02d}")
+
+    labels, counts, costs = [], [], []
+    for k in keys:
+        r = by_ym.get(k)
+        labels.append(datetime.strptime(k, "%Y-%m").strftime("%b %y"))
+        counts.append(r["c"] if r else 0)
+        costs.append((r["s"] or 0) if r else 0)
+    return labels, counts, costs
+
+
+def build_days_to_close(conn):
+    """Distribution of days-from-loss-to-close for closed claims, bucketed
+    into fixed ranges for a simple bar chart."""
+    rows = conn.execute("SELECT days_open FROM claims WHERE closed=1").fetchall()
+    buckets = [("0-14", 0, 14), ("15-30", 15, 30), ("31-60", 31, 60), ("61-90", 61, 90), ("90+", 91, 10**6)]
+    counts = [0] * len(buckets)
+    for r in rows:
+        d = r["days_open"] or 0
+        for i, (_, lo, hi) in enumerate(buckets):
+            if lo <= d <= hi:
+                counts[i] += 1
+                break
+    return [b[0] for b in buckets], counts
 
 
 @app.route("/performance")
