@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ depot }} · Explorer{% endblock %}
+{% block content %}
+<div class="crumb-bar">
+  <a class="crumb" href="{{ url_for('explorer') }}">Explorer</a>
+  <span class="crumb-sep">/</span>
+  <span class="crumb current">{{ depot }}</span>
+</div>
+
+<div class="depot-head">
+  <div>
+    <h1>{{ depot }}</h1>
+    <div class="depot-head-meta">{{ vehicles|length }} vehicles on cover &middot; {{ claims_stats.claims }} claims recorded</div>
+  </div>
+  <div class="depot-kpi-row">
+    <div class="depot-kpi">Incurred<b>&pound;{{ "{:,.0f}".format(claims_stats.incurred) }}</b></div>
+    <div class="depot-kpi">Open claims<b>{{ claims_stats.open }}</b></div>
+  </div>
+</div>
+
+<div class="subtabs">
+  <a class="subtab {{ 'active' if tab == 'vehicles' else '' }}" style="text-decoration:none;" href="{{ url_for('explorer_depot', depot=depot, tab='vehicles') }}">Vehicles</a>
+  <a class="subtab {{ 'active' if tab == 'drivers' else '' }}" style="text-decoration:none;" href="{{ url_for('explorer_depot', depot=depot, tab='drivers') }}">Drivers</a>
+</div>
+
+{% if tab == 'drivers' %}
+<div class="illustrative-note">Illustrative only &mdash; sample driver profiles showing what this view will surface once a telematics provider is connected. Not real people or real behaviour data.</div>
+<div class="list-panel">
+  {% for d in drivers %}
+  <a class="list-row" style="text-decoration:none;color:inherit;" href="{{ url_for('explorer_driver', depot=depot, slug=d.slug) }}">
+    <div class="list-avatar">{{ d.name.split('.')[-1].strip()[:2]|upper }}</div>
+    <div class="list-main">
+      <div class="list-title">{{ d.name }}</div>
+      <div class="list-sub">{{ d.role }} &middot; {{ d.service }} service</div>
+    </div>
+    <span class="list-chip {{ d.tier }}">{{ {'high':'Review','med':'Monitor','low':'Good'}[d.tier] }}</span>
+    <svg class="list-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+  </a>
+  {% else %}
+  <div class="empty-note">No sample drivers configured for this depot yet.</div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="table-wrap">
+  <table class="claims-table">
+    <thead><tr><th>Registration</th><th>Category</th><th>Make and model</th><th>On cover since</th><th>Notes</th><th></th></tr></thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr>
+        <td><b>{{ v.reg }}</b></td>
+        <td>{{ v.category }}</td>
+        <td>{{ (v.make + ' ' + v.model) if v.make else v.model }}</td>
+        <td>{{ v.cover_start }}</td>
+        <td>{{ v.notes or '—' }}</td>
+        <td><a class="tbl-action-btn" style="text-decoration:none;display:inline-block;" href="{{ url_for('explorer_vehicle', depot=depot, vehicle_id=v.id) }}">View</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty-note">No vehicles on cover at this depot.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
