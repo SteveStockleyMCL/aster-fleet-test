@@ -842,10 +842,11 @@ def build_multiline_chart(labels, series, width=700, height=260, pad=40):
 
     out_series = []
     for idx, s in enumerate(series):
-        points = [{"x": round(x_at(i), 1), "y": round(y_at(v), 1)} for i, v in enumerate(s["values"])]
+        points = [{"x": round(x_at(i), 1), "y": round(y_at(v), 1), "label": labels[i], "value": v} for i, v in enumerate(s["values"])]
         out_series.append({
             "name": s["name"], "cat": idx % 6,
             "polyline": " ".join(f"{p['x']},{p['y']}" for p in points),
+            "points": points,
         })
     steps = 4
     grid = [
