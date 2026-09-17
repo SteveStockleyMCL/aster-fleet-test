@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Portfolio{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Portfolio</h2>
+  <p>Every cover Acme Fleet Services holds, and the live vehicle schedule &mdash; backed by a real database.</p>
+</div>
+
+<div class="cl-panel">
+  <h4>Covers</h4>
+  <p class="cl-panel-sub">Active policies on this account</p>
+  <div class="table-wrap">
+    <table class="claims-table">
+      <thead><tr><th>Cover</th><th>Insurer</th><th>Policy number</th><th>Period</th><th style="text-align:right;">Premium</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for c in covers %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.insurer }}</td>
+          <td>{{ c.policy_number }}</td>
+          <td>{{ c.period_start }} &ndash; {{ c.period_end }}</td>
+          <td style="text-align:right;">&pound;{{ "{:,.0f}".format(c.premium or 0) }}</td>
+          <td><span class="status-pill closed">{{ c.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section-gap">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h4 style="margin:0 0 2px;font-size:16px;">Fleet register</h4>
+      <p style="color:var(--ink-soft);font-size:12.5px;margin:0;">Live insured vehicle schedule &mdash; {{ on_cover }} vehicles currently on cover.</p>
+    </div>
+    <a class="ncf-submit" style="text-decoration:none;" href="{{ url_for('new_vehicle') }}">+ Add vehicle</a>
+  </div>
+
+  <div class="stat-row" style="margin-top:14px;">
+    <div class="stat-card"><div class="stat-label">Active vehicles</div><div class="stat-value">{{ on_cover }}</div></div>
+    <div class="stat-card"><div class="stat-label">Added, last 12 months</div><div class="stat-value">{{ added_12m }}</div></div>
+    <div class="stat-card"><div class="stat-label">Removed, last 12 months</div><div class="stat-value">{{ removed_12m }}</div></div>
+    <div class="stat-card"><div class="stat-label">Total on schedule</div><div class="stat-value">{{ vehicles|length }}</div></div>
+  </div>
+
+  <form class="filter-bar" method="get" style="margin-top:14px;">
+    <div class="filter-row">
+      <input type="text" class="reg-search" name="q" value="{{ q }}" placeholder="Search registration or model&hellip;">
+      <div class="filter-group"><span class="filter-group-label">Depot</span>
+        <select name="depot" onchange="this.form.submit()">
+          <option value="">All depots</option>
+          {% for d in depots %}<option value="{{ d }}" {{ 'selected' if d==depot }}>{{ d }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="filter-group"><span class="filter-group-label">Category</span>
+        <select name="category" onchange="this.form.submit()">
+          <option value="">All categories</option>
+          {% for c in categories %}<option value="{{ c }}" {{ 'selected' if c==category }}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="ncf-cancel">Filter</button>
+      <a class="reset-link" href="{{ url_for('portfolio') }}">Reset filters</a>
+    </div>
+  </form>
+
+  <div class="table-wrap section-gap">
+    <table class="claims-table">
+      <thead>
+        <tr>
+          {% macro sort_link(key, label) -%}
+          <th><a style="color:inherit;text-decoration:none;" href="{{ url_for('portfolio', q=q, depot=depot, category=category, sort=key, dir=('asc' if sort_key==key and sort_dir=='desc' else 'desc')) }}">{{ label }} {% if sort_key==key %}{{ '▲' if sort_dir=='asc' else '▼' }}{% endif %}</a></th>
+          {%- endmacro %}
+          {{ sort_link('reg', 'Registration') }}
+          {{ sort_link('cover_start', 'On cover since') }}
+          {{ sort_link('category', 'Category') }}
+          <th>Make and model</th>
+          {{ sort_link('depot', 'Depot') }}
+          {{ sort_link('status', 'Cover') }}
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in vehicles %}
+        <tr>
+          <td><b>{{ v.reg }}</b></td>
+          <td>{{ v.cover_start }}</td>
+          <td>{{ v.category }}</td>
+          <td>{{ v.make }} {{ v.model }}</td>
+          <td>{{ v.depot }}</td>
+          <td><span class="status-pill {{ 'closed' if v.status=='On cover' else 'removed' }}">{{ v.status }}</span></td>
+          <td>{{ v.notes or '—' }}</td>
+          <td>
+            {% if v.status == 'On cover' %}
+            <form method="post" action="{{ url_for('remove_vehicle', vehicle_id=v.id) }}" onsubmit="return confirm('Remove {{ v.reg }} from cover?');">
+              <button type="submit" class="tbl-action-btn">Remove</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-note">No vehicles match these filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

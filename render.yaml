@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: aster-fleet-test
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --chdir app --workers 2 --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: DATABASE_PATH
+        value: /var/data/aster.db
+      - key: SECRET_KEY
+        generateValue: true
+    disk:
+      name: aster-data
+      mountPath: /var/data
+      sizeGB: 1

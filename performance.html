@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Fleet Performance{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Fleet performance</h2>
+  <p>Where cost and frequency are concentrated across depots and causes &mdash; computed live from the claims register.</p>
+</div>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-label">Overall loss ratio</div>
+    <div class="stat-value">{{ '%.1f'|format(loss_ratio) ~ '%' if loss_ratio is not none else '&mdash;' }}</div>
+    <div class="stat-sub">target {{ '%.1f'|format(target) }}%</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Depots reporting</div>
+    <div class="stat-value">{{ depot_stats|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Leading cause</div>
+    <div class="stat-value" style="font-size:18px;">{{ cause_stats[0].cause if cause_stats else '&mdash;' }}</div>
+    <div class="stat-sub">{{ cause_stats[0].claims if cause_stats else 0 }} claims</div>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>By depot</h4>
+  <p class="cl-panel-sub">Claim volume and cost concentration across the network</p>
+  <div class="table-wrap">
+    <table class="claims-table">
+      <thead><tr><th>Depot</th><th>Claims</th><th>Open</th><th style="text-align:right;">Total incurred</th><th style="text-align:right;">Average cost</th></tr></thead>
+      <tbody>
+        {% for d in depot_stats %}
+        <tr>
+          <td><b>{{ d.depot }}</b></td>
+          <td>{{ d.claims }}</td>
+          <td>{{ d.open }}</td>
+          <td style="text-align:right;">&pound;{{ "{:,.0f}".format(d.incurred or 0) }}</td>
+          <td style="text-align:right;">&pound;{{ "{:,.0f}".format(d.avg_cost or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty-note">No claims recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cl-panel section-gap">
+  <h4>Key incident types</h4>
+  <p class="cl-panel-sub">Top causes by claim volume</p>
+  <div class="table-wrap">
+    <table class="claims-table">
+      <thead><tr><th>Cause</th><th>Claims</th><th style="text-align:right;">Total incurred</th></tr></thead>
+      <tbody>
+        {% for c in cause_stats %}
+        <tr>
+          <td>{{ c.cause }}</td>
+          <td>{{ c.claims }}</td>
+          <td style="text-align:right;">&pound;{{ "{:,.0f}".format(c.incurred or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="empty-note">No claims recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="overview-note section-gap">
+  <p>Safety overview and Driver risk (telematics-derived) haven&rsquo;t been ported from the concept preview yet &mdash; they need a real driver/telematics data source behind this database first.</p>
+</div>
+{% endblock %}

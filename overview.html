@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Fleet claims relationship</h2>
+  <p>Live test build for Acme Fleet Services &mdash; real database behind Portfolio and Claims. Six depots, one view.</p>
+</div>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-label">Vehicles on cover</div>
+    <div class="stat-value">{{ vehicle_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total claims</div>
+    <div class="stat-value">{{ total_claims }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total incurred</div>
+    <div class="stat-value">&pound;{{ "{:,.0f}".format(total_incurred) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Open claims</div>
+    <div class="stat-value">{{ open_claims }}</div>
+  </div>
+  {% if loss_ratio_pct %}
+  <div class="stat-card">
+    <div class="stat-label">Loss ratio</div>
+    <div class="stat-value">{{ "%.1f"|format(loss_ratio_pct) }}%</div>
+    <div class="stat-sub">target {{ "%.1f"|format(loss_ratio_target) }}%</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="overview-note section-gap">
+  <p>This is a real, database-backed test build &mdash; vehicles and claims added here are saved for good, not session-only like the concept preview. Explorer and Roadmap haven&rsquo;t been ported across yet.</p>
+</div>
+{% endblock %}

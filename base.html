@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}Aster{% endblock %} &middot; Aster*</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+
+<div class="portal-head">
+  <div class="portal-head-top">
+    <div class="portal-brand"><img class="brand-logo-img" src="{{ url_for('static', filename='images/aster-logo-white.png') }}" alt="Aster*"></div>
+    <div class="portal-head-right">
+      <div class="portal-client">Live test build<br>Acme Fleet Services &middot; McCarron Coates</div>
+      {% if renewal_days is not none %}
+      <div class="topbar-renewal {{ 'tb-soon' if renewal_days <= 30 else '' }}">Days to renewal <b>{{ renewal_days }}</b></div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="portal-tabs-row">
+    <div class="portal-tabs" role="tablist">
+      <a class="portal-tab {{ 'active' if active_tab == 'overview' else '' }}" href="{{ url_for('overview') }}">Overview</a>
+      <a class="portal-tab {{ 'active' if active_tab == 'portfolio' else '' }}" href="{{ url_for('portfolio') }}">Portfolio</a>
+      <a class="portal-tab {{ 'active' if active_tab == 'claims' else '' }}" href="{{ url_for('claims') }}">Claims</a>
+      <a class="portal-tab {{ 'active' if active_tab == 'performance' else '' }}" href="{{ url_for('performance') }}">Fleet Performance</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-note">{{ messages[0] }}</div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+
+<footer class="portal-foot">Live test build on real data entry &mdash; Acme Fleet Services. Backed by a real database now; still short of Explorer &amp; Roadmap from the concept preview.</footer>
+
+</body>
+</html>

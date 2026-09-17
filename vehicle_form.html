@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Add vehicle{% endblock %}
+{% block content %}
+<div class="form-page">
+  <div class="form-card">
+    <h3>Add new vehicle</h3>
+    <p class="dm-sub">Saved straight to the Fleet Motor schedule &mdash; this is a real record, not a session-only preview.</p>
+
+    {% if errors %}
+    <div class="flash-note" style="background:var(--gold-soft);color:var(--gold);">
+      {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post">
+      <div class="ncf-grid">
+        <div class="ncf-field"><label>Registration</label>
+          <input type="text" name="reg" value="{{ form.get('reg','') }}" placeholder="Leave blank if not yet plated">
+        </div>
+        <div class="ncf-field"><label>Value (&pound;)</label>
+          <input type="number" name="value" min="0" step="100" value="{{ form.get('value','') }}" placeholder="e.g. 42000">
+        </div>
+        <div class="ncf-field"><label>Make *</label>
+          <input type="text" name="make" required value="{{ form.get('make','') }}" placeholder="e.g. Mercedes">
+        </div>
+        <div class="ncf-field"><label>Model *</label>
+          <input type="text" name="model" required value="{{ form.get('model','') }}" placeholder="e.g. Sprinter 316">
+        </div>
+        <div class="ncf-field"><label>Category *</label>
+          <select name="category" required>
+            <option value="" disabled {{ 'selected' if not form.get('category') }}>Select a category</option>
+            {% for c in categories %}<option value="{{ c }}" {{ 'selected' if form.get('category')==c }}>{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="ncf-field"><label>Depot *</label>
+          <select name="depot" required>
+            <option value="" disabled {{ 'selected' if not form.get('depot') }}>Select a depot</option>
+            {% for d in depots %}<option value="{{ d }}" {{ 'selected' if form.get('depot')==d }}>{{ d }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="ncf-field"><label>Date on *</label>
+          <input type="date" name="cover_start" required value="{{ form.get('cover_start','') }}">
+        </div>
+        <div class="ncf-field"><label>Date off</label>
+          <input type="date" name="cover_end" value="{{ form.get('cover_end','') }}">
+        </div>
+        <div class="ncf-field"><label>Cover</label>
+          <select name="status">
+            <option value="On cover" {{ 'selected' if form.get('status','On cover')=='On cover' }}>On cover</option>
+            <option value="Pending" {{ 'selected' if form.get('status')=='Pending' }}>Pending</option>
+          </select>
+        </div>
+        <div class="ncf-field"><label>Year</label>
+          <input type="number" name="year" min="1990" max="2028" value="{{ form.get('year','') }}" placeholder="e.g. 2024">
+        </div>
+        <div class="ncf-field"><label>GVW (kg)</label>
+          <input type="number" name="gvw" min="0" step="50" value="{{ form.get('gvw','') }}" placeholder="e.g. 3500">
+        </div>
+        <div class="ncf-field span-2"><label>Notes</label>
+          <textarea name="notes" maxlength="1000" placeholder="Anything your handler should know">{{ form.get('notes','') }}</textarea>
+        </div>
+      </div>
+      <div class="ncf-actions">
+        <a class="ncf-cancel" style="text-decoration:none;display:inline-flex;align-items:center;" href="{{ url_for('portfolio') }}">Cancel</a>
+        <button type="submit" class="ncf-submit">Add vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}New claim{% endblock %}
+{% block content %}
+<div class="form-page">
+  <div class="form-card">
+    <h3>Log a new claim</h3>
+    <p class="dm-sub">Added to the Claims register immediately &mdash; reference and policy year are generated automatically.</p>
+
+    {% if errors %}
+    <div class="flash-note" style="background:var(--gold-soft);color:var(--gold);">
+      {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post">
+      <div class="ncf-grid">
+        <div class="ncf-field"><label>Depot *</label>
+          <select name="depot" required>
+            <option value="" disabled {{ 'selected' if not form.get('depot') }}>Select a depot</option>
+            {% for d in depots %}<option value="{{ d }}" {{ 'selected' if form.get('depot')==d }}>{{ d }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="ncf-field"><label>Vehicle *</label>
+          <input type="text" name="vehicle_type" required value="{{ form.get('vehicle_type','') }}" placeholder="e.g. Sprinter 316, or a registration">
+        </div>
+        <div class="ncf-field"><label>Date of loss *</label>
+          <input type="date" name="loss_date" required value="{{ form.get('loss_date','') }}">
+        </div>
+        <div class="ncf-field"><label>Cause *</label>
+          <input type="text" name="cause" required list="cause-options" value="{{ form.get('cause','') }}" placeholder="e.g. RTC &ndash; third party">
+          <datalist id="cause-options">{% for c in causes %}<option value="{{ c }}">{% endfor %}</datalist>
+        </div>
+        <div class="ncf-field"><label>Liability *</label>
+          <select name="fault" required>
+            <option value="" disabled {{ 'selected' if not form.get('fault') }}>Select liability</option>
+            <option value="Fault" {{ 'selected' if form.get('fault')=='Fault' }}>Fault</option>
+            <option value="Non-fault" {{ 'selected' if form.get('fault')=='Non-fault' }}>Non-fault</option>
+            <option value="Split liability" {{ 'selected' if form.get('fault')=='Split liability' }}>Split liability</option>
+            <option value="Unknown" {{ 'selected' if form.get('fault')=='Unknown' }}>Unknown</option>
+          </select>
+        </div>
+        <div class="ncf-field"><label>Own damage *</label>
+          <select name="own_damage" required>
+            <option value="" disabled {{ 'selected' if not form.get('own_damage') }}>Select an outcome</option>
+            <option value="Repairable" {{ 'selected' if form.get('own_damage')=='Repairable' }}>Repairable</option>
+            <option value="Total loss" {{ 'selected' if form.get('own_damage')=='Total loss' }}>Total loss</option>
+            <option value="None" {{ 'selected' if form.get('own_damage')=='None' }}>None</option>
+          </select>
+        </div>
+        <div class="ncf-field"><label>Reserve (&pound;)</label>
+          <input type="number" name="reserve" min="0" step="50" value="{{ form.get('reserve','') }}" placeholder="e.g. 2500">
+        </div>
+        <div class="ncf-field span-2"><label>Notes</label>
+          <textarea name="notes" maxlength="1000" placeholder="Circumstances, third-party details, anything the handler needs">{{ form.get('notes','') }}</textarea>
+        </div>
+      </div>
+      <div class="ncf-actions">
+        <a class="ncf-cancel" style="text-decoration:none;display:inline-flex;align-items:center;" href="{{ url_for('claims') }}">Cancel</a>
+        <button type="submit" class="ncf-submit">Log claim</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
