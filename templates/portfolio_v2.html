@@ -76,7 +76,7 @@
           <h2 class="h2">Fleet register</h2>
           <p class="sm" style="margin-top:4px">Live insured vehicle schedule &mdash; {{ on_cover }} vehicles currently on cover.</p>
         </div>
-        <a class="btn" href="{{ url_for('new_vehicle') }}" style="text-decoration:none">+ Add vehicle</a>
+        <a class="btn" href="{{ url_for('new_vehicle_v2') }}" style="text-decoration:none">+ Add vehicle</a>
       </div>
 
       <div class="grid4">
@@ -129,7 +129,7 @@
               <td>{{ v.notes or '—' }}</td>
               <td>
                 {% if v.status == 'On cover' %}
-                <form method="post" action="{{ url_for('remove_vehicle', vehicle_id=v.id) }}" onsubmit="return confirm('Remove {{ v.reg }} from cover?');">
+                <form method="post" action="{{ url_for('remove_vehicle', vehicle_id=v.id, v2=1) }}" onsubmit="return confirm('Remove {{ v.reg }} from cover?');">
                   <button type="submit" class="btn3" style="padding:0;min-height:0;font-size:13px">Remove</button>
                 </form>
                 {% endif %}

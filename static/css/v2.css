@@ -161,6 +161,24 @@ select{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:v
 .fld input[type=email],.fld input[type=password],.fld input[type=text]{font:inherit;font-size:15px;color:var(--ink);background:var(--ground);border:1px solid var(--line2);border-radius:10px;padding:14px 16px;outline:0;transition:border-color .16s var(--e)}
 .fld input:focus{border-color:var(--link)}
 
+/* ---------- data-entry forms (vehicle / claim) ---------- */
+.fld label{font-size:13px;font-weight:600;color:var(--ink2)}
+.fld input[type=date],.fld input[type=number]{font:inherit;font-size:15px;color:var(--ink);background:var(--ground);border:1px solid var(--line2);border-radius:10px;padding:13px 16px;outline:0;transition:border-color .16s var(--e);width:100%}
+.fld select{font:inherit;font-size:15px;font-weight:400;color:var(--ink);background:var(--ground);border:1px solid var(--line2);border-radius:10px;padding:13px 16px;cursor:pointer;width:100%}
+.fld textarea{font:inherit;font-size:15px;color:var(--ink);background:var(--ground);border:1px solid var(--line2);border-radius:10px;padding:13px 16px;outline:0;resize:vertical;min-height:96px;transition:border-color .16s var(--e)}
+.fld input[type=date]:focus,.fld input[type=number]:focus,.fld select:focus,.fld textarea:focus{border-color:var(--link)}
+.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 28px}
+.formgrid .span2{grid-column:1/-1}
+.formactions{display:flex;align-items:center;gap:14px;padding-top:8px}
+.notice{border-radius:12px;padding:16px 20px;font-size:14px;line-height:1.55}
+.notice.err{background:rgba(194,21,31,.08);color:var(--alert)}
+.notice.err ul{margin:0;padding-left:18px}
+.notice.ok{background:rgba(15,111,76,.1);color:var(--good)}
+@media (max-width:900px){
+  .formgrid{grid-template-columns:minmax(0,1fr)}
+  .formgrid .span2{grid-column:auto}
+}
+
 /* ---------- loader ---------- */
 #loader{position:fixed;inset:0;z-index:90;background:var(--ground);display:grid;place-items:center}
 #loader .lbl{font-size:14px;font-weight:600;color:var(--ink);text-align:center;min-height:20px}

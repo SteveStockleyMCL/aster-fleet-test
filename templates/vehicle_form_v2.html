@@ -1,0 +1,75 @@
+{% extends "base_v2.html" %}
+{% block title %}Add vehicle{% endblock %}
+{% block content %}
+<section aria-label="Add vehicle">
+  <div class="wrap" style="padding-top:34px;padding-bottom:64px;display:flex;flex-direction:column;gap:32px;max-width:900px">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><a href="{{ url_for('portfolio_v2') }}">Portfolio</a><span>/</span><span class="cap" style="color:var(--ink)">Add vehicle</span></div>
+      <h1 class="d2">Add a vehicle to the Fleet Motor schedule.</h1>
+      <p class="lede" style="max-width:640px">Saved straight to the live database &mdash; this is a real record on the register, not a session-only preview.</p>
+    </div>
+
+    {% if errors %}
+    <div class="notice err">
+      <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <form method="post">
+        <div class="formgrid">
+          <div class="fld"><label for="reg">Registration</label>
+            <input id="reg" type="text" name="reg" value="{{ form.get('reg','') }}" placeholder="Leave blank if not yet plated">
+          </div>
+          <div class="fld"><label for="value">Value (&pound;)</label>
+            <input id="value" type="number" name="value" min="0" step="100" value="{{ form.get('value','') }}" placeholder="e.g. 42000">
+          </div>
+          <div class="fld"><label for="make">Make *</label>
+            <input id="make" type="text" name="make" required value="{{ form.get('make','') }}" placeholder="e.g. Mercedes">
+          </div>
+          <div class="fld"><label for="model">Model *</label>
+            <input id="model" type="text" name="model" required value="{{ form.get('model','') }}" placeholder="e.g. Sprinter 316">
+          </div>
+          <div class="fld"><label for="category">Category *</label>
+            <select id="category" name="category" required>
+              <option value="" disabled {{ 'selected' if not form.get('category') }}>Select a category</option>
+              {% for c in categories %}<option value="{{ c }}" {{ 'selected' if form.get('category')==c }}>{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fld"><label for="depot">Depot *</label>
+            <select id="depot" name="depot" required>
+              <option value="" disabled {{ 'selected' if not form.get('depot') }}>Select a depot</option>
+              {% for d in depots %}<option value="{{ d }}" {{ 'selected' if form.get('depot')==d }}>{{ d }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fld"><label for="cover_start">Date on *</label>
+            <input id="cover_start" type="date" name="cover_start" required value="{{ form.get('cover_start','') }}">
+          </div>
+          <div class="fld"><label for="cover_end">Date off</label>
+            <input id="cover_end" type="date" name="cover_end" value="{{ form.get('cover_end','') }}">
+          </div>
+          <div class="fld"><label for="status">Cover</label>
+            <select id="status" name="status">
+              <option value="On cover" {{ 'selected' if form.get('status','On cover')=='On cover' }}>On cover</option>
+              <option value="Pending" {{ 'selected' if form.get('status')=='Pending' }}>Pending</option>
+            </select>
+          </div>
+          <div class="fld"><label for="year">Year</label>
+            <input id="year" type="number" name="year" min="1990" max="2028" value="{{ form.get('year','') }}" placeholder="e.g. 2024">
+          </div>
+          <div class="fld"><label for="gvw">GVW (kg)</label>
+            <input id="gvw" type="number" name="gvw" min="0" step="50" value="{{ form.get('gvw','') }}" placeholder="e.g. 3500">
+          </div>
+          <div class="fld span2"><label for="notes">Notes</label>
+            <textarea id="notes" name="notes" maxlength="1000" placeholder="Anything your handler should know">{{ form.get('notes','') }}</textarea>
+          </div>
+        </div>
+        <div class="formactions">
+          <button type="submit" class="btn">Add vehicle</button>
+          <a class="btn2" style="text-decoration:none" href="{{ url_for('portfolio_v2') }}">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

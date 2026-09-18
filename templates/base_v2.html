@@ -63,8 +63,8 @@ try {
   {% if renewal_days is not none %}
   <span class="pill" style="white-space:nowrap{{ ';color:var(--alert);background:rgba(194,21,31,.1)' if renewal_days <= 30 else '' }}">Days to renewal <span class="num" style="font-weight:800">{{ renewal_days }}</span></span>
   {% endif %}
-  <a class="btn2" href="{{ url_for('new_vehicle') }}" style="text-decoration:none;min-height:36px;padding:8px 16px;font-size:13px;white-space:nowrap">Vehicle changes</a>
-  <a class="btn" href="{{ url_for('new_claim') }}" style="text-decoration:none;min-height:36px;padding:8px 16px;font-size:13px;white-space:nowrap"><svg class="ic" style="width:13px;height:13px" aria-hidden="true"><use href="#i-msg"></use></svg>New claim</a>
+  <a class="btn2" href="{{ url_for('new_vehicle_v2') }}" style="text-decoration:none;min-height:36px;padding:8px 16px;font-size:13px;white-space:nowrap">Vehicle changes</a>
+  <a class="btn" href="{{ url_for('new_claim_v2') }}" style="text-decoration:none;min-height:36px;padding:8px 16px;font-size:13px;white-space:nowrap"><svg class="ic" style="width:13px;height:13px" aria-hidden="true"><use href="#i-msg"></use></svg>New claim</a>
   <div class="seg" role="group" aria-label="Theme">
     <button type="button" id="tLight" aria-pressed="true" aria-label="Light theme"><svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-sun"></use></svg></button>
     <button type="button" id="tDark" aria-pressed="false" aria-label="Dark theme"><svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-moon"></use></svg></button>
@@ -86,6 +86,13 @@ try {
   </nav>
 
   <main class="main">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="wrap" style="padding-top:24px">
+        <div class="notice ok">{{ messages[0] }}</div>
+      </div>
+      {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </main>
 </div>

@@ -53,7 +53,7 @@ def require_login():
     if request.endpoint in ("login", "static", "login_v2"):
         return
     if not session.get("authed"):
-        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2"):
+        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2", "new_vehicle_v2", "new_claim_v2"):
             return redirect(url_for("login_v2", next=request.path))
         return redirect(url_for("login", next=request.path))
 
@@ -624,7 +624,74 @@ def remove_vehicle(vehicle_id):
         conn.commit()
         flash(f"{v['reg']} removed from cover from {eff_date}.")
     conn.close()
+    if request.args.get("v2"):
+        return redirect(url_for("portfolio_v2"))
     return redirect(url_for("portfolio"))
+
+
+@app.route("/portfolio-v2/vehicles/new", methods=["GET", "POST"])
+def new_vehicle_v2():
+    conn = get_db()
+    depots = [r["depot"] for r in conn.execute(
+        "SELECT DISTINCT depot FROM vehicles ORDER BY depot"
+    ).fetchall()]
+
+    if request.method == "POST":
+        reg = request.form.get("reg", "").strip().upper()
+        depot = request.form.get("depot", "")
+        category = request.form.get("category", "")
+        make = request.form.get("make", "").strip()
+        model = request.form.get("model", "").strip()
+        value = request.form.get("value") or None
+        year = request.form.get("year") or None
+        gvw = request.form.get("gvw") or None
+        cover_start = request.form.get("cover_start")
+        cover_end = request.form.get("cover_end") or None
+        status = request.form.get("status", "On cover")
+        notes = request.form.get("notes", "").strip()
+
+        errors = []
+        if not depot: errors.append("Depot is required.")
+        if not category: errors.append("Category is required.")
+        if not make: errors.append("Make is required.")
+        if not model: errors.append("Model is required.")
+        if not cover_start: errors.append("Date on is required.")
+
+        if not reg:
+            prefix = depot[:2].upper() if depot else "XX"
+            existing = conn.execute("SELECT COUNT(*) c FROM vehicles").fetchone()["c"]
+            reg = f"{prefix}{datetime.now().year % 100}GEN{existing+1:03d}"
+
+        if not errors:
+            existing = conn.execute("SELECT id FROM vehicles WHERE reg=?", (reg,)).fetchone()
+            if existing:
+                errors.append(f"Registration {reg} already exists on the schedule.")
+
+        if errors:
+            conn.close()
+            return render_template(
+                "vehicle_form_v2.html", v2_active="portfolio", v2_as_of=as_of_today(get_db()).strftime("%d %b %Y"),
+                depots=depots, categories=CATEGORIES, errors=errors, form=request.form,
+            )
+
+        conn.execute(
+            """INSERT INTO vehicles (reg, depot, category, make, model, value, year, gvw,
+               cover_start, cover_end, status, notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (reg, depot, category, make, model, value, year, gvw,
+             cover_start, cover_end, status, notes),
+        )
+        conn.commit()
+        conn.close()
+        flash(f"{reg} added to the Fleet Motor schedule from {cover_start}.")
+        return redirect(url_for("portfolio_v2"))
+
+    conn.close()
+    today = as_of_today(get_db()).isoformat()
+    return render_template(
+        "vehicle_form_v2.html", v2_active="portfolio", v2_as_of=as_of_today(get_db()).strftime("%d %b %Y"),
+        depots=depots, categories=CATEGORIES, errors=[], form={"cover_start": today, "status": "On cover"},
+    )
 
 
 @app.route("/portfolio/covers/<cover_id>")
@@ -942,6 +1009,86 @@ def new_claim():
     return render_template(
         "claim_form.html", active_tab="claims", depots=depots, causes=causes,
         errors=[], form={"loss_date": today},
+    )
+
+
+@app.route("/claims-v2/new", methods=["GET", "POST"])
+def new_claim_v2():
+    conn = get_db()
+    depots = [r["depot"] for r in conn.execute(
+        "SELECT DISTINCT depot FROM vehicles ORDER BY depot"
+    ).fetchall()]
+    causes = [r[0] for r in conn.execute(
+        "SELECT DISTINCT cause FROM claims ORDER BY cause"
+    ).fetchall()]
+
+    if request.method == "POST":
+        depot = request.form.get("depot", "")
+        vehicle_type = request.form.get("vehicle_type", "").strip()
+        loss_date = request.form.get("loss_date")
+        cause = request.form.get("cause", "").strip()
+        fault = request.form.get("fault", "")
+        own_damage = request.form.get("own_damage", "")
+        reserve = request.form.get("reserve") or 0
+        notes = request.form.get("notes", "").strip()
+
+        errors = []
+        if not depot: errors.append("Depot is required.")
+        if not vehicle_type: errors.append("Vehicle is required.")
+        if not loss_date: errors.append("Date of loss is required.")
+        if not cause: errors.append("Cause is required.")
+        if not fault: errors.append("Liability is required.")
+        if not own_damage: errors.append("Own damage is required.")
+
+        if errors:
+            conn.close()
+            return render_template(
+                "claim_form_v2.html", v2_active="claims", v2_as_of=as_of_today(get_db()).strftime("%d %b %Y"),
+                depots=depots, causes=causes, errors=errors, form=request.form,
+            )
+
+        loss_ratio_meta = get_meta(conn, "loss_ratio", {}) or {}
+        labels = loss_ratio_meta.get("labels", [])
+        d = datetime.strptime(loss_date, "%Y-%m-%d").date()
+        start_year = d.year if (d.month > 10 or (d.month == 10 and d.day >= 11)) else d.year - 1
+        policy_year = f"{start_year}-{str((start_year + 1) % 100).zfill(2)}"
+
+        prefix_map = {}
+        for r in conn.execute("SELECT ref, depot FROM claims").fetchall():
+            m = r["ref"].split("-")
+            if len(m) >= 2:
+                prefix_map.setdefault(r["depot"], []).append(r["ref"])
+        depot_code = depot[:3].upper()
+        existing_refs = [r["ref"] for r in conn.execute(
+            "SELECT ref FROM claims WHERE depot=?", (depot,)
+        ).fetchall()]
+        nums = []
+        for ref in existing_refs:
+            try:
+                nums.append(int(ref.split("-")[-1]))
+            except ValueError:
+                pass
+        next_num = (max(nums) + 1) if nums else 10001
+        ref = f"BW-{depot_code}-{next_num}"
+
+        reserve_val = float(reserve) if reserve else 0.0
+        conn.execute(
+            """INSERT INTO claims (ref, depot, vehicle_type, loss_date, cause, status, fault,
+               own_damage, paid, reserve, incurred, days_open, policy_year, closed, notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (ref, depot, vehicle_type, loss_date, cause, "Open - Under Investigation",
+             fault, own_damage, 0, reserve_val, reserve_val, 0, policy_year, 0, notes),
+        )
+        conn.commit()
+        conn.close()
+        flash(f"Claim {ref} logged and added to the register.")
+        return redirect(url_for("claims_v2"))
+
+    conn.close()
+    today = date.today().isoformat()
+    return render_template(
+        "claim_form_v2.html", v2_active="claims", v2_as_of=as_of_today(get_db()).strftime("%d %b %Y"),
+        depots=depots, causes=causes, errors=[], form={"loss_date": today},
     )
 
 
