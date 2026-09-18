@@ -53,7 +53,7 @@ def require_login():
     if request.endpoint in ("login", "static", "login_v2"):
         return
     if not session.get("authed"):
-        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2", "new_vehicle_v2", "new_claim_v2"):
+        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2", "new_vehicle_v2", "new_claim_v2", "performance_v2"):
             return redirect(url_for("login_v2", next=request.path))
         return redirect(url_for("login", next=request.path))
 
@@ -1780,6 +1780,94 @@ def build_v2_claims_payload(conn):
     }
 
 
+V2_PERIOD_LABEL = {
+    "all": "All time",
+    "policy_year": "Current policy period",
+    "prior_policy_year": "Previous policy period",
+    "12m": "Previous 12 months",
+}
+
+
+def build_v2_performance_payload(conn, period="all"):
+    as_of = as_of_today(conn)
+
+    loss_ratio_meta = get_meta(conn, "loss_ratio", {}) or {}
+    labels = loss_ratio_meta.get("labels", [])
+    premiums = loss_ratio_meta.get("earned_premium", [])
+    incurreds = loss_ratio_meta.get("incurred", [])
+    lrs = loss_ratio_meta.get("loss_ratio", [])
+    target = loss_ratio_meta.get("target", 65.0)
+    current_py = labels[-1] if labels else None
+    prior_py = labels[-2] if len(labels) > 1 else None
+    years = [
+        {
+            "label": lbl,
+            "premium": premiums[i] if i < len(premiums) else 0,
+            "incurred": incurreds[i] if i < len(incurreds) else 0,
+            "lr": lrs[i] if i < len(lrs) else 0,
+            "target": target,
+        }
+        for i, lbl in enumerate(labels)
+    ]
+
+    sql = "SELECT * FROM claims WHERE 1=1"
+    params = []
+    if period == "policy_year" and current_py:
+        sql += " AND policy_year=?"
+        params.append(current_py)
+    elif period == "prior_policy_year" and prior_py:
+        sql += " AND policy_year=?"
+        params.append(prior_py)
+    elif period == "12m":
+        cutoff = (as_of - timedelta(days=365)).isoformat()
+        sql += " AND loss_date >= ?"
+        params.append(cutoff)
+    period_rows = conn.execute(sql, params).fetchall()
+
+    depot_agg = {}
+    for r in period_rows:
+        agg = depot_agg.setdefault(r["depot"], {"claims": 0, "incurred": 0.0, "open": 0})
+        agg["claims"] += 1
+        agg["incurred"] += r["incurred"] or 0
+        if not r["closed"]:
+            agg["open"] += 1
+    depot_stats = sorted(
+        (
+            {"depot": d, "claims": v["claims"], "incurred": v["incurred"],
+             "avgCost": (v["incurred"] / v["claims"]) if v["claims"] else 0, "open": v["open"]}
+            for d, v in depot_agg.items()
+        ),
+        key=lambda x: x["incurred"], reverse=True,
+    )
+
+    cause_agg = {}
+    for r in period_rows:
+        agg = cause_agg.setdefault(r["cause"], {"claims": 0, "incurred": 0.0})
+        agg["claims"] += 1
+        agg["incurred"] += r["incurred"] or 0
+    cause_stats = sorted(
+        ({"cause": c, "claims": v["claims"], "incurred": v["incurred"]} for c, v in cause_agg.items()),
+        key=lambda x: x["claims"], reverse=True,
+    )[:6]
+
+    on_cover = conn.execute("SELECT COUNT(*) c FROM vehicles WHERE status='On cover'").fetchone()["c"]
+    forecast = compute_renewal_forecast(conn, on_cover)
+
+    top_drivers = build_top_drivers(limit=5)
+    for d in top_drivers:
+        d["tierLabel"] = V2_TIER_LABEL[d["tier"]]
+
+    return {
+        "client": V2_CLIENT_NAME, "asOf": as_of.strftime("%d %b %Y"),
+        "period": period, "periodLabel": V2_PERIOD_LABEL.get(period, "All time"),
+        "currentPy": current_py, "priorPy": prior_py,
+        "overallLR": loss_ratio_meta.get("overall_loss_ratio"), "target": target,
+        "lossRatio": {"years": years, "target": target},
+        "depotStats": depot_stats, "causeStats": cause_stats,
+        "forecast": forecast, "topDrivers": top_drivers,
+    }
+
+
 def build_v2_overview_payload(conn):
     as_of = as_of_today(conn)
     vehicle_count = conn.execute("SELECT COUNT(*) c FROM vehicles WHERE status='On cover'").fetchone()["c"]
@@ -1883,6 +1971,15 @@ def claims_v2():
     data = build_v2_claims_payload(conn)
     conn.close()
     return render_template("claims_v2.html", v2_active="claims", v2_as_of=data["asOf"], data=data)
+
+
+@app.route("/performance-v2")
+def performance_v2():
+    conn = get_db()
+    period = request.args.get("period", "all")
+    data = build_v2_performance_payload(conn, period)
+    conn.close()
+    return render_template("performance_v2.html", v2_active="performance", v2_as_of=data["asOf"], data=data)
 
 
 @app.route("/driver-v2")

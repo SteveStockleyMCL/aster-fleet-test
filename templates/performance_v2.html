@@ -1,0 +1,160 @@
+{% extends "base_v2.html" %}
+{% block title %}Fleet Performance{% endblock %}
+{% block content %}
+<section aria-label="Fleet Performance">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:52px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:18px;max-width:720px">
+        <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><span class="cap" style="color:var(--ink)">Fleet Performance</span></div>
+        <h1 class="d2">Where cost and frequency are concentrated across depots and causes.</h1>
+        <p class="lede">Computed live from the claims register &mdash; {{ data.periodLabel }}.</p>
+      </div>
+      <form method="get" style="margin:0">
+        <select name="period" onchange="this.form.submit()">
+          <option value="all" {{ 'selected' if data.period=='all' }}>All time</option>
+          <option value="policy_year" {{ 'selected' if data.period=='policy_year' }}>Current policy period{{ ' (' ~ data.currentPy ~ ')' if data.currentPy }}</option>
+          <option value="prior_policy_year" {{ 'selected' if data.period=='prior_policy_year' }}>Previous policy period{{ ' (' ~ data.priorPy ~ ')' if data.priorPy }}</option>
+          <option value="12m" {{ 'selected' if data.period=='12m' }}>Previous 12 months</option>
+        </select>
+      </form>
+    </div>
+
+    <div class="grid3">
+      <div><div class="cap">Overall loss ratio</div><div class="num" style="font-size:28px;font-weight:800;margin-top:8px">{{ '%.1f'|format(data.overallLR) ~ '%' if data.overallLR is not none else '—' }}</div><div class="sm" style="margin-top:4px">target {{ '%.1f'|format(data.target) }}%</div></div>
+      <div><div class="cap">Depots reporting</div><div class="num" style="font-size:28px;font-weight:800;margin-top:8px">{{ data.depotStats|length }}</div></div>
+      <div><div class="cap">Leading cause</div><div style="font-size:18px;font-weight:700;margin-top:8px">{{ data.causeStats[0].cause if data.causeStats else '—' }}</div><div class="sm" style="margin-top:4px">{{ data.causeStats[0].claims if data.causeStats else 0 }} claims</div></div>
+    </div>
+
+    {% if data.forecast %}
+    <div class="card">
+      <h2 class="h2">Renewal position &mdash; Fleet Motor, {{ data.forecast.current_py }}</h2>
+      <p class="sm" style="margin-top:6px;max-width:720px">Premium paid to date, current position against target, and an indicative run-off loss ratio and renewal premium &mdash; illustrative, not a quotation.</p>
+      <hr class="rule" style="margin:22px 0">
+      <div class="grid2" style="--cols:repeat(5,minmax(0,1fr))">
+        <div>
+          <div class="cap">Premium paid to date</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">&pound;{{ "{:,.0f}".format(data.forecast.current_premium) }}</div>
+          <div class="sm" style="margin-top:4px">{{ data.forecast.current_py }} Fleet Motor premium</div>
+        </div>
+        <div>
+          <div class="cap">Current loss ratio</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">{{ "%.1f"|format(data.forecast.current_lr) }}%</div>
+          <div class="sm" style="margin-top:4px">{{ data.forecast.direction }} target ({{ "%.1f"|format(data.forecast.target) }}%)</div>
+        </div>
+        <div>
+          <div class="cap">Indicative run-off loss ratio</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">{{ "%.1f"|format(data.forecast.current_lr * 1.08) }}%</div>
+          <div class="sm" style="margin-top:4px">projected from current position</div>
+        </div>
+        <div>
+          <div class="cap">Suggested movement</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">{{ '+' if data.forecast.low >= 0 else '' }}{{ data.forecast.low }}% to {{ '+' if data.forecast.high >= 0 else '' }}{{ data.forecast.high }}%</div>
+          <div class="sm" style="margin-top:4px">at next Fleet Motor renewal</div>
+        </div>
+        <div>
+          <div class="cap">Indicative renewal premium</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">&pound;{{ "{:,.0f}".format(data.forecast.low_premium) }}&ndash;&pound;{{ "{:,.0f}".format(data.forecast.high_premium) }}</div>
+          <div class="sm" style="margin-top:4px">vs &pound;{{ "{:,.0f}".format(data.forecast.current_premium) }} now</div>
+        </div>
+      </div>
+      <hr class="rule" style="margin:22px 0">
+      <p class="sm" style="max-width:900px">Illustrative only: modelled from this policy year&rsquo;s loss ratio and claim frequency against target, the same method used on the Portfolio renewal panel. Insurers price on their own claims experience view and underwriting appetite at the time, not this model.</p>
+    </div>
+    {% endif %}
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div>
+        <h2 class="h2">Loss ratio by policy year</h2>
+        <p class="sm" style="margin-top:4px">Actual loss ratio against the {{ '%.0f'|format(data.target) }}% target, policy year on policy year</p>
+      </div>
+      <div id="lossWrap" class="scrollx"></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div>
+        <h2 class="h2">By depot</h2>
+        <p class="sm" style="margin-top:4px">Total incurred cost across the network, {{ data.periodLabel.lower() }}</p>
+      </div>
+      <div id="depotBars"></div>
+      <div class="scrollx">
+        <table class="tbl" style="min-width:560px">
+          <thead><tr><th>Depot</th><th>Claims</th><th>Open</th><th class="r">Total incurred</th><th class="r">Average cost</th></tr></thead>
+          <tbody>
+            {% for d in data.depotStats %}
+            <tr>
+              <td style="font-weight:700;color:var(--ink)">{{ d.depot }}</td>
+              <td class="num">{{ d.claims }}</td>
+              <td class="num">{{ d.open }}</td>
+              <td class="r num">&pound;{{ "{:,.0f}".format(d.incurred or 0) }}</td>
+              <td class="r num">&pound;{{ "{:,.0f}".format(d.avgCost or 0) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="sm" style="padding:24px 0">No claims recorded for this period.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div>
+        <h2 class="h2">Key incident types</h2>
+        <p class="sm" style="margin-top:4px">Top causes by claim volume and cost, {{ data.periodLabel.lower() }}</p>
+      </div>
+      <div id="causeBars"></div>
+      <div class="scrollx">
+        <table class="tbl" style="min-width:480px">
+          <thead><tr><th>Cause</th><th>Claims</th><th class="r">Total incurred</th></tr></thead>
+          <tbody>
+            {% for c in data.causeStats %}
+            <tr>
+              <td>{{ c.cause }}</td>
+              <td class="num">{{ c.claims }}</td>
+              <td class="r num">&pound;{{ "{:,.0f}".format(c.incurred or 0) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="sm" style="padding:24px 0">No claims recorded for this period.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h2 class="d2">Top 5 drivers &mdash; deteriorating risk</h2>
+        <p class="lede" style="max-width:660px">Fleet-wide, ranked by combined telematics risk score across every depot. Illustrative only, until a telematics feed is connected.</p>
+      </div>
+      <hr class="rule" style="margin:20px 0 0">
+      {% for d in data.topDrivers %}
+      <div class="drow" style="padding:22px 0{{ ';border-top:1px solid var(--line)' if not loop.first else '' }}">
+        <div class="pill {{ 'hi' if d.tier == 'high' else '' }}" style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:15px">{{ d.tierLabel[:1] }}</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <a class="h2" href="{{ url_for('explorer_driver', depot=d.depot, slug=d.slug) }}">{{ d.name }}</a>
+          <div class="sm">{{ d.depot }} &middot; {{ d.role }} &middot; <span class="num">score {{ d.score }}, {{ d.tierLabel.lower() }}</span></div>
+        </div>
+        <p class="bdy" style="color:var(--ink2)">{{ d.blurb }} <strong style="color:var(--ink)">{{ d.actions[0] }}</strong></p>
+        <div style="text-align:right"><a class="more" href="{{ url_for('explorer_driver', depot=d.depot, slug=d.slug) }}">Open profile<svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-arrow"></use></svg></a></div>
+      </div>
+      {% else %}
+      <p class="sm" style="padding:24px 0">No sample drivers configured.</p>
+      {% endfor %}
+    </div>
+
+    <div><hr class="rule"><p class="sm" style="padding-top:20px;max-width:900px">Real claims and vehicle data from the {{ data.client }} database, as at {{ data.asOf }}. Driver-level detail on this page is illustrative sample data until a telematics feed is connected.</p></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/v2-common.js') }}"></script>
+<script>
+V2.lossChart(document.getElementById('lossWrap'), {{ data.lossRatio.years|tojson }}, true);
+V2.barList(document.getElementById('depotBars'), {{ data.depotStats|tojson }}.map(function (d) {
+  return { label: d.depot, value: d.incurred, display: '£' + Math.round(d.incurred).toLocaleString('en-GB'), color: 'var(--c1)' };
+}), { labelWidth: 140 });
+V2.barList(document.getElementById('causeBars'), {{ data.causeStats|tojson }}.map(function (c) {
+  return { label: c.cause, value: c.incurred, display: '£' + Math.round(c.incurred).toLocaleString('en-GB'), color: 'var(--c4)' };
+}), { labelWidth: 260 });
+V2.reveal(document);
+</script>
+{% endblock %}
