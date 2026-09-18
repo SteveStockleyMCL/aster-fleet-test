@@ -1,0 +1,164 @@
+{% extends "base_v2.html" %}
+{% block title %}Portfolio{% endblock %}
+{% block content %}
+<section aria-label="Portfolio">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:52px">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><span class="cap" style="color:var(--ink)">Portfolio</span></div>
+      <h1 class="d2" style="max-width:840px">Every cover Acme Fleet Services holds, and the live vehicle schedule.</h1>
+      <p class="lede" style="max-width:760px">{{ on_cover }} vehicles currently on cover, backed by a real database &mdash; not a snapshot.</p>
+    </div>
+
+    {% if forecast %}
+    <div class="card">
+      <h2 class="h2">Fleet Motor renewal forecast &mdash; {{ forecast.current_py }}</h2>
+      <p class="sm" style="margin-top:6px;max-width:640px">Modelled from this policy year&rsquo;s loss ratio and claim frequency against target &mdash; illustrative, not a quotation.</p>
+      <hr class="rule" style="margin:22px 0">
+      <div class="grid2" style="--cols:repeat(5,minmax(0,1fr))">
+        <div>
+          <div class="cap">Loss ratio ({{ forecast.current_py }})</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">{{ "%.1f"|format(forecast.current_lr) }}%</div>
+          <div class="sm" style="margin-top:4px">target {{ "%.1f"|format(forecast.target) }}%</div>
+        </div>
+        <div>
+          <div class="cap">Claim frequency</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">{{ "%.1f"|format(forecast.frequency * 100) }}%</div>
+          <div class="sm" style="margin-top:4px">{{ forecast.claims_this_year }} claims across {{ forecast.vehicles }} vehicles</div>
+        </div>
+        <div>
+          <div class="cap">Suggested movement</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">{{ '+' if forecast.low >= 0 else '' }}{{ forecast.low }}% to {{ '+' if forecast.high >= 0 else '' }}{{ forecast.high }}%</div>
+          <div class="sm" style="margin-top:4px">at next Fleet Motor renewal</div>
+        </div>
+        <div>
+          <div class="cap">Indicative premium</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">&pound;{{ "{:,.0f}".format(forecast.low_premium) }}&ndash;&pound;{{ "{:,.0f}".format(forecast.high_premium) }}</div>
+          <div class="sm" style="margin-top:4px">vs &pound;{{ "{:,.0f}".format(forecast.current_premium) }} now</div>
+        </div>
+        <div>
+          <div class="cap">Rate per vehicle</div>
+          <div class="num" style="font-size:26px;font-weight:800;margin-top:8px">&pound;{{ "{:,.0f}".format(forecast.rate_per_vehicle) }}</div>
+          <div class="sm" style="margin-top:4px">projected &pound;{{ "{:,.0f}".format(forecast.low_rate_per_vehicle) }}&ndash;&pound;{{ "{:,.0f}".format(forecast.high_rate_per_vehicle) }}</div>
+        </div>
+      </div>
+      <hr class="rule" style="margin:22px 0">
+      <p class="sm" style="max-width:900px">The {{ forecast.current_py }} loss ratio is {{ forecast.direction }} target (<strong style="color:var(--ink)">{{ "%.1f"|format(forecast.current_lr) }}%</strong> vs <strong style="color:var(--ink)">{{ "%.1f"|format(forecast.target) }}%</strong>), and claim frequency has {{ forecast.freq_trend }} year-on-year. Weighting both factors, a Fleet Motor renewal built on this trajectory would likely land around a <strong style="color:var(--ink)">{{ '+' if forecast.low >= 0 else '' }}{{ forecast.low }}% to {{ '+' if forecast.high >= 0 else '' }}{{ forecast.high }}%</strong> rate movement. Illustrative only: insurers price on their own claims experience view and underwriting appetite at the time, not this model.</p>
+    </div>
+    {% endif %}
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div>
+        <h2 class="h2">Covers</h2>
+        <p class="sm" style="margin-top:4px">Active policies on this account &mdash; open a cover for excesses, exclusions and documents.</p>
+      </div>
+      <div class="scrollx">
+        <table class="tbl" style="min-width:760px">
+          <thead><tr><th>Cover</th><th>Insurer</th><th>Policy number</th><th>Period</th><th class="r">Premium</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for c in covers %}
+            <tr>
+              <td><a class="h2" style="font-size:15px" href="{{ url_for('cover_detail', cover_id=c.id) }}">{{ c.name }}</a></td>
+              <td>{{ c.insurer }}</td>
+              <td class="num">{{ c.policy_number }}</td>
+              <td class="num">{{ c.period_start }} &ndash; {{ c.period_end }}</td>
+              <td class="r num">&pound;{{ "{:,.0f}".format(c.premium or 0) }}</td>
+              <td><span class="pill">{{ c.status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap">
+        <div>
+          <h2 class="h2">Fleet register</h2>
+          <p class="sm" style="margin-top:4px">Live insured vehicle schedule &mdash; {{ on_cover }} vehicles currently on cover.</p>
+        </div>
+        <a class="btn" href="{{ url_for('new_vehicle') }}" style="text-decoration:none">+ Add vehicle</a>
+      </div>
+
+      <div class="grid4">
+        <div><div class="cap">Active vehicles</div><div class="num" style="font-size:24px;font-weight:800;margin-top:6px">{{ on_cover }}</div></div>
+        <div><div class="cap">Added, last 12 months</div><div class="num" style="font-size:24px;font-weight:800;margin-top:6px">{{ added_12m }}</div></div>
+        <div><div class="cap">Removed, last 12 months</div><div class="num" style="font-size:24px;font-weight:800;margin-top:6px">{{ removed_12m }}</div></div>
+        <div><div class="cap">Total on schedule</div><div class="num" style="font-size:24px;font-weight:800;margin-top:6px">{{ vehicles|length }}</div></div>
+      </div>
+
+      <form method="get" style="display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding-top:6px">
+        <div class="fld" style="flex:1 1 240px;min-width:200px"><input type="text" name="q" value="{{ q }}" placeholder="Search registration or model&hellip;"></div>
+        <select name="depot" onchange="this.form.submit()">
+          <option value="">All depots</option>
+          {% for d in depots %}<option value="{{ d }}" {{ 'selected' if d==depot }}>{{ d }}</option>{% endfor %}
+        </select>
+        <select name="category" onchange="this.form.submit()">
+          <option value="">All categories</option>
+          {% for c in categories %}<option value="{{ c }}" {{ 'selected' if c==category }}>{{ c }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="chip">Filter</button>
+        {% if q or depot or category %}<a class="sm" href="{{ url_for('portfolio_v2') }}">Reset filters</a>{% endif %}
+      </form>
+
+      <div class="scrollx">
+        <table class="tbl" style="min-width:920px">
+          <thead>
+            <tr>
+              {% macro sort_link(key, label) -%}
+              <th><button type="button" onclick="location.href='{{ url_for('portfolio_v2', q=q, depot=depot, category=category, sort=key, dir=('asc' if sort_key==key and sort_dir=='desc' else 'desc')) }}'"{% if sort_key==key %} aria-sort="{{ 'ascending' if sort_dir=='asc' else 'descending' }}"{% endif %}>{{ label }}{% if sort_key==key %} {{ '▲' if sort_dir=='asc' else '▼' }}{% endif %}</button></th>
+              {%- endmacro %}
+              {{ sort_link('reg', 'Registration') }}
+              {{ sort_link('cover_start', 'On cover since') }}
+              {{ sort_link('category', 'Category') }}
+              <th>Make and model</th>
+              {{ sort_link('depot', 'Depot') }}
+              {{ sort_link('status', 'Cover') }}
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in page_rows %}
+            <tr>
+              <td class="num" style="font-weight:700;color:var(--ink)">{{ v.reg }}</td>
+              <td class="num">{{ v.cover_start }}</td>
+              <td>{{ v.category }}</td>
+              <td>{{ (v.make + ' ' + v.model) if v.make else v.model }}</td>
+              <td>{{ v.depot }}</td>
+              <td><span class="pill {{ 'hi' if v.status=='On cover' else '' }}">{{ v.status }}</span></td>
+              <td>{{ v.notes or '—' }}</td>
+              <td>
+                {% if v.status == 'On cover' %}
+                <form method="post" action="{{ url_for('remove_vehicle', vehicle_id=v.id) }}" onsubmit="return confirm('Remove {{ v.reg }} from cover?');">
+                  <button type="submit" class="btn3" style="padding:0;min-height:0;font-size:13px">Remove</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="sm" style="padding:24px 0">No vehicles match these filters.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:6px">
+        <div class="sm num">Showing {{ showing_from }}&ndash;{{ showing_to }} of {{ total_matching }} vehicles</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <a class="chip" style="{{ 'opacity:.45;pointer-events:none' if page <= 1 else '' }}" href="{{ url_for('portfolio_v2', q=q, depot=depot, category=category, sort=sort_key, dir=sort_dir, page=page-1) }}">Previous</a>
+          {% for p in page_numbers %}
+          {% if p is none %}
+          <span class="sm">&hellip;</span>
+          {% else %}
+          <a class="chip num" {% if p == page %}aria-current="page" style="border-color:var(--ink);background:var(--ink);color:var(--ground)"{% endif %} href="{{ url_for('portfolio_v2', q=q, depot=depot, category=category, sort=sort_key, dir=sort_dir, page=p) }}">{{ p }}</a>
+          {% endif %}
+          {% endfor %}
+          <a class="chip" style="{{ 'opacity:.45;pointer-events:none' if page >= total_pages else '' }}" href="{{ url_for('portfolio_v2', q=q, depot=depot, category=category, sort=sort_key, dir=sort_dir, page=page+1) }}">Next</a>
+        </div>
+      </div>
+    </div>
+
+    <div><hr class="rule"><p class="sm" style="padding-top:20px;max-width:900px">Real cover and vehicle data from the Acme Fleet Services database, as at {{ v2_as_of }}.</p></div>
+  </div>
+</section>
+{% endblock %}

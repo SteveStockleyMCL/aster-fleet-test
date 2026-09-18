@@ -53,7 +53,7 @@ def require_login():
     if request.endpoint in ("login", "static", "login_v2"):
         return
     if not session.get("authed"):
-        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2"):
+        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2"):
             return redirect(url_for("login_v2", next=request.path))
         return redirect(url_for("login", next=request.path))
 
@@ -455,6 +455,84 @@ def portfolio():
     return render_template(
         "portfolio.html",
         active_tab="portfolio",
+        covers=covers,
+        vehicles=vehicles,
+        page_rows=page_rows,
+        depots=depots,
+        categories=CATEGORIES,
+        q=q, depot=depot, category=category, sort_key=sort_key, sort_dir=sort_dir,
+        on_cover=on_cover, added_12m=added_12m, removed_12m=removed_12m,
+        forecast=forecast,
+        page=page, total_pages=total_pages, total_matching=total_matching,
+        showing_from=showing_from, showing_to=showing_to, page_numbers=page_numbers,
+    )
+
+
+@app.route("/portfolio-v2")
+def portfolio_v2():
+    conn = get_db()
+    covers = conn.execute("SELECT * FROM covers ORDER BY is_primary DESC").fetchall()
+
+    q = request.args.get("q", "").strip()
+    depot = request.args.get("depot", "")
+    category = request.args.get("category", "")
+    sort_key = request.args.get("sort", "reg")
+    sort_dir = request.args.get("dir", "asc")
+
+    sql = "SELECT * FROM vehicles WHERE 1=1"
+    params = []
+    if q:
+        sql += " AND (reg LIKE ? OR model LIKE ? OR make LIKE ?)"
+        like = f"%{q}%"
+        params += [like, like, like]
+    if depot:
+        sql += " AND depot=?"
+        params.append(depot)
+    if category:
+        sql += " AND category=?"
+        params.append(category)
+
+    valid_sorts = {"reg", "cover_start", "category", "depot", "status"}
+    if sort_key not in valid_sorts:
+        sort_key = "reg"
+    sql += f" ORDER BY {sort_key} {'DESC' if sort_dir == 'desc' else 'ASC'}"
+
+    vehicles = conn.execute(sql, params).fetchall()
+
+    depots = [r["depot"] for r in conn.execute(
+        "SELECT DISTINCT depot FROM vehicles ORDER BY depot"
+    ).fetchall()]
+    on_cover = conn.execute(
+        "SELECT COUNT(*) c FROM vehicles WHERE status='On cover'"
+    ).fetchone()["c"]
+    cutoff = (as_of_today(conn) - timedelta(days=365)).isoformat()
+    added_12m = conn.execute(
+        "SELECT COUNT(*) c FROM vehicles WHERE status='On cover' AND cover_start >= ?",
+        (cutoff,),
+    ).fetchone()["c"]
+    removed_12m = conn.execute(
+        "SELECT COUNT(*) c FROM vehicles WHERE status='Removed' AND cover_end >= ?",
+        (cutoff,),
+    ).fetchone()["c"]
+
+    forecast = compute_renewal_forecast(conn, on_cover)
+
+    PER_PAGE = 15
+    page = request.args.get("page", 1, type=int) or 1
+    total_matching = len(vehicles)
+    total_pages = max(1, math.ceil(total_matching / PER_PAGE))
+    page = max(1, min(page, total_pages))
+    page_rows = vehicles[(page - 1) * PER_PAGE: page * PER_PAGE]
+    showing_from = (page - 1) * PER_PAGE + 1 if total_matching else 0
+    showing_to = min(page * PER_PAGE, total_matching)
+    page_numbers = page_number_list(page, total_pages)
+
+    as_of = as_of_today(conn).strftime("%d %b %Y")
+    conn.close()
+    return render_template(
+        "portfolio_v2.html",
+        v2_active="portfolio",
+        v2_as_of=as_of,
         covers=covers,
         vehicles=vehicles,
         page_rows=page_rows,
