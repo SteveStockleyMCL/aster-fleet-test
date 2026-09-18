@@ -158,7 +158,7 @@ select{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:v
 .si-l .inner{position:relative;height:100%;padding:56px 64px;display:flex;flex-direction:column;justify-content:space-between;gap:40px}
 .si-r{flex:1 1 42%;display:grid;place-items:center;padding:56px 40px}
 .fld{display:flex;flex-direction:column;gap:8px}
-.fld input[type=email],.fld input[type=password]{font:inherit;font-size:15px;color:var(--ink);background:var(--ground);border:1px solid var(--line2);border-radius:10px;padding:14px 16px;outline:0;transition:border-color .16s var(--e)}
+.fld input[type=email],.fld input[type=password],.fld input[type=text]{font:inherit;font-size:15px;color:var(--ink);background:var(--ground);border:1px solid var(--line2);border-radius:10px;padding:14px 16px;outline:0;transition:border-color .16s var(--e)}
 .fld input:focus{border-color:var(--link)}
 
 /* ---------- loader ---------- */

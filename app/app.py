@@ -51,6 +51,8 @@ def require_login():
     if request.endpoint in ("login", "static", "login_v2"):
         return
     if not session.get("authed"):
+        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2"):
+            return redirect(url_for("login_v2", next=request.path))
         return redirect(url_for("login", next=request.path))
 
 CATEGORIES = [
@@ -1666,9 +1668,18 @@ def driver_v2(depot=None, slug=None):
     return render_template("driver_v2.html", v2_active="driver", v2_as_of=as_of.strftime("%d %b %Y"), data=data)
 
 
-@app.route("/login-v2")
+@app.route("/login-v2", methods=["GET", "POST"])
 def login_v2():
-    return render_template("login_v2.html")
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if username == SITE_USERNAME and password == SITE_PASSWORD:
+            session["authed"] = True
+            session.permanent = bool(request.form.get("remember"))
+            return redirect(request.args.get("next") or url_for("overview_v2"))
+        error = "Incorrect username or password."
+    return render_template("login_v2.html", error=error)
 
 
 # Called at import time (not just under `python app.py`) so the database is

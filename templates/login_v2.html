@@ -19,7 +19,7 @@ try {
 </style>
 </head>
 <body>
-<div class="previewbar">Design preview of the sign-in screen &mdash; <a href="{{ url_for('login') }}">go to the real sign-in</a></div>
+<div class="previewbar">New look for Aster* &mdash; <a href="{{ url_for('login') }}">prefer the classic sign-in?</a></div>
 
 <svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
   <symbol id="wm" viewBox="94 412 893 249">
@@ -46,7 +46,7 @@ try {
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap">
         <div style="font-size:13px;color:#a7bfd4">Part of McCarron Coates</div>
-        <div style="font-size:13px;color:#7f9bb4">Design preview &middot; real Acme Fleet Services data</div>
+        <div style="font-size:13px;color:#7f9bb4">Real Acme Fleet Services data</div>
       </div>
     </div>
   </div>
@@ -56,11 +56,13 @@ try {
         <h1 style="font-size:34px;line-height:1.18;font-weight:800;letter-spacing:-.024em">Sign in</h1>
         <p class="sm">Acme Fleet Services &middot; fleet risk</p>
       </div>
-      <div class="fld"><label class="cap" style="color:var(--ink)">Work email</label><input type="email" placeholder="you@acmefleetservices.co.uk" disabled></div>
-      <div class="fld"><label class="cap" style="color:var(--ink)">Password</label><input type="password" placeholder="••••••••••" disabled></div>
-      <label style="display:flex;align-items:center;gap:10px"><input type="checkbox" checked disabled style="width:17px;height:17px;accent-color:var(--link);margin:0"><span class="sm" style="color:var(--ink2)">Keep me signed in on this device</span></label>
-      <a class="btn" href="{{ url_for('login') }}" style="font-size:15px;font-weight:700;min-height:52px;text-decoration:none">Sign in for real<svg class="ic" style="width:15px;height:15px" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
-      <p class="sm">This preview form doesn&rsquo;t submit anything &mdash; it&rsquo;s here to show the layout. Use the button above for the live build&rsquo;s sign-in.</p>
+      {% if error %}<div style="background:rgba(194,21,31,.1);color:var(--alert);border-radius:10px;padding:12px 14px;font-size:13.5px;font-weight:600">{{ error }}</div>{% endif %}
+      <form method="post" style="display:flex;flex-direction:column;gap:24px">
+        <div class="fld"><label class="cap" style="color:var(--ink)" for="v2-username">Username</label><input id="v2-username" name="username" type="text" autocomplete="username" required autofocus placeholder="you@acmefleetservices.co.uk"></div>
+        <div class="fld"><label class="cap" style="color:var(--ink)" for="v2-password">Password</label><input id="v2-password" name="password" type="password" autocomplete="current-password" required placeholder="••••••••••"></div>
+        <label style="display:flex;align-items:center;gap:10px"><input type="checkbox" name="remember" value="1" style="width:17px;height:17px;accent-color:var(--link);margin:0"><span class="sm" style="color:var(--ink2)">Keep me signed in on this device</span></label>
+        <button type="submit" class="btn" style="font-size:15px;font-weight:700;min-height:52px">Sign in<svg class="ic" style="width:15px;height:15px" aria-hidden="true"><use href="#i-arrow"></use></svg></button>
+      </form>
       <hr class="rule">
       <div style="display:flex;gap:14px;align-items:flex-start">
         <svg class="ic" style="width:16px;height:16px;color:var(--ink3);flex:0 0 auto;margin-top:2px" aria-hidden="true"><use href="#i-lock"></use></svg>
