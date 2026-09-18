@@ -120,7 +120,7 @@ $("#tDark").addEventListener("click",function(){setTheme("dark")});
 (function(){
   var overlay = document.getElementById("pageload");
   if(!overlay) return;
-  var timer = null;
+  var HOLD = 380; // minimum time the mark stays visible, so it always shows
   document.addEventListener("click", function(e){
     if(e.defaultPrevented || e.button !== 0) return;
     if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -129,11 +129,11 @@ $("#tDark").addEventListener("click",function(){setTheme("dark")});
     if(a.href.indexOf("#") !== -1 && a.pathname === location.pathname && a.search === location.search) return;
     var url; try{ url = new URL(a.href, location.href); }catch(err){ return; }
     if(url.origin !== location.origin) return;
-    // Small delay so a fast navigation never flashes the overlay.
-    timer = setTimeout(function(){ overlay.classList.add("show"); }, 150);
+    e.preventDefault();
+    overlay.classList.add("show");
+    setTimeout(function(){ location.href = a.href; }, HOLD);
   });
   window.addEventListener("pageshow", function(){
-    if(timer) clearTimeout(timer);
     overlay.classList.remove("show");
   });
 })();
