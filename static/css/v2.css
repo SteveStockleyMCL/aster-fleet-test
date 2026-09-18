@@ -177,6 +177,11 @@ select{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:v
 .notice.info{background:var(--panel);color:var(--ink2)}
 .depot-card{display:block;text-decoration:none;color:inherit;transition:transform .16s var(--e)}
 .depot-card:hover{transform:translateY(-2px)}
+.rm-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;list-style:none}
+.rm-summary::-webkit-details-marker{display:none}
+.rm-summary .ic{transition:transform .16s var(--e)}
+details[open]>.rm-summary .ic{transform:rotate(180deg)}
+.rm-tag{font-size:12px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
 @media (max-width:900px){
   .formgrid{grid-template-columns:minmax(0,1fr)}
   .formgrid .span2{grid-column:auto}

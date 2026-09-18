@@ -53,7 +53,7 @@ def require_login():
     if request.endpoint in ("login", "static", "login_v2"):
         return
     if not session.get("authed"):
-        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2", "new_vehicle_v2", "new_claim_v2", "performance_v2", "explorer_v2", "explorer_depot_v2", "explorer_vehicle_v2"):
+        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2", "new_vehicle_v2", "new_claim_v2", "performance_v2", "explorer_v2", "explorer_depot_v2", "explorer_vehicle_v2", "roadmap_v2"):
             return redirect(url_for("login_v2", next=request.path))
         return redirect(url_for("login", next=request.path))
 
@@ -1712,6 +1712,17 @@ def build_top_drivers(limit=5):
 @app.route("/roadmap")
 def roadmap():
     return render_template("roadmap.html", active_tab="roadmap", watchlist=build_watchlist())
+
+
+@app.route("/roadmap-v2")
+def roadmap_v2():
+    conn = get_db()
+    as_of = as_of_today(conn)
+    conn.close()
+    return render_template(
+        "roadmap_v2.html", v2_active="roadmap", v2_as_of=as_of.strftime("%d %b %Y"),
+        watchlist=build_watchlist(),
+    )
 
 
 # ---------------------------------------------------------------------------

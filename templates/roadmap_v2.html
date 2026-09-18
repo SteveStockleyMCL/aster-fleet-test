@@ -1,0 +1,80 @@
+{% extends "base_v2.html" %}
+{% block title %}Roadmap{% endblock %}
+{% block content %}
+<section aria-label="Roadmap">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:32px;max-width:900px">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><span class="cap" style="color:var(--ink)">Roadmap</span></div>
+      <h1 class="d2">Aster is being built in phases.</h1>
+      <p class="lede">Here&rsquo;s what&rsquo;s live, what&rsquo;s next, and the platform it&rsquo;s building toward. Click any phase for more detail.</p>
+    </div>
+
+    <ol class="ladder">
+      <li>
+        <div class="col"><span class="knob now"></span><span class="stem"></span></div>
+        <div class="body" style="flex:1 1 auto;padding-bottom:32px">
+          <details open>
+            <summary class="rm-summary">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span class="rm-tag" style="color:var(--ink)">Live now</span>
+                <h2 class="h2">Fleet visibility</h2>
+              </div>
+              <svg class="ic" style="width:16px;height:16px;flex:0 0 auto" aria-hidden="true"><use href="#i-chev"></use></svg>
+            </summary>
+            <p class="bdy" style="color:var(--ink2);margin-top:12px">One view of every depot, every vehicle and every claim against your real fleet register and loss ratio &mdash; this portal, backed by a real database.</p>
+            <p class="bdy" style="color:var(--ink2);margin-top:12px">Overview, Portfolio, Claims and Fleet Performance all read from the same live vehicle and claims register. Explorer adds a depot-by-depot view of that same real data. No spreadsheets to maintain, no data re-keyed by hand.</p>
+          </details>
+        </div>
+      </li>
+      <li>
+        <div class="col"><span class="knob next"></span><span class="stem"></span></div>
+        <div class="body" style="flex:1 1 auto;padding-bottom:32px">
+          <details>
+            <summary class="rm-summary">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span class="rm-tag" style="color:var(--link)">Next</span>
+                <h2 class="h2">Telematics integration</h2>
+              </div>
+              <svg class="ic" style="width:16px;height:16px;flex:0 0 auto" aria-hidden="true"><use href="#i-chev"></use></svg>
+            </summary>
+            <p class="bdy" style="color:var(--ink2);margin-top:12px">Connecting your fleet&rsquo;s telematics feed alongside claims data &mdash; harsh braking, speed, mileage, time of day &mdash; and linking specific vehicles to the claims recorded against them.</p>
+            <p class="bdy" style="color:var(--ink2);margin-top:12px">Claims history tells us what&rsquo;s already gone wrong. Telematics tells us what&rsquo;s happening on the road right now. Bringing the two together, and down to individual vehicle level, is what turns this from a report into an early-warning system.</p>
+          </details>
+        </div>
+      </li>
+      <li>
+        <div class="col"><span class="knob"></span></div>
+        <div class="body" style="flex:1 1 auto">
+          <details>
+            <summary class="rm-summary">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span class="rm-tag" style="color:var(--ink3)">The vision</span>
+                <h2 class="h2">Driver risk intelligence</h2>
+              </div>
+              <svg class="ic" style="width:16px;height:16px;flex:0 0 auto" aria-hidden="true"><use href="#i-chev"></use></svg>
+            </summary>
+            <p class="bdy" style="color:var(--ink2);margin-top:12px">Every employed and self-employed driver, risk-profiled from telematics, claims and premium data combined &mdash; with a clear recommendation on what to do about each one.</p>
+            <p class="bdy" style="color:var(--ink2);margin-top:12px">This is what Aster is building toward: instead of &ldquo;which depot had the most claims,&rdquo; the question becomes &ldquo;which drivers need attention, and why.&rdquo; The preview below uses illustrative sample profiles &mdash; also explorable from each depot&rsquo;s Drivers tab &mdash; not real people or real behaviour data.</p>
+            <div class="card" style="margin-top:18px;padding:22px 24px">
+              <p class="sm">Illustrative only &mdash; driver watchlist &middot; click a driver for the full risk profile</p>
+              {% for d in watchlist %}
+              <div class="drow" style="grid-template-columns:44px minmax(0,1fr) auto auto;padding:18px 0{{ ';border-top:1px solid var(--line)' if not loop.first else '' }}">
+                <div class="pill hi" style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:13px">{{ d.name.split('.')[-1].strip()[:2]|upper }}</div>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <a class="h2" style="font-size:15px" href="{{ url_for('driver_v2', depot=d.depot, slug=d.slug) }}">{{ d.name }}</a>
+                  <div class="sm">{{ d.depot }} &middot; {{ d.role }}</div>
+                </div>
+                <span class="pill hi">Review</span>
+                <a href="{{ url_for('driver_v2', depot=d.depot, slug=d.slug) }}" aria-label="Open {{ d.name }}"><svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+              </div>
+              {% else %}
+              <p class="sm" style="padding:18px 0">No sample drivers currently flagged for review.</p>
+              {% endfor %}
+            </div>
+          </details>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+{% endblock %}
