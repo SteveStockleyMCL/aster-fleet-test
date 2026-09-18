@@ -19,6 +19,7 @@ try {
 </style>
 </head>
 <body>
+<div id="pageload" aria-hidden="true"><svg class="pageload-mark" viewBox="869 416 113 110"><use href="#mk"></use></svg></div>
 <div class="previewbar">New look for Aster* &mdash; <a href="{{ url_for('login') }}">prefer the classic sign-in?</a></div>
 
 <svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
@@ -34,6 +35,9 @@ try {
   </symbol>
   <symbol id="i-arrow" viewBox="0 0 16 16"><path d="M2.6 8h10.8M9.4 4l4 4-4 4"></path></symbol>
   <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3.2" y="7" width="9.6" height="7" rx="1.6"></rect><path d="M5.6 7V4.8a2.4 2.4 0 0 1 4.8 0V7"></path></symbol>
+  <symbol id="mk" viewBox="869 416 113 110">
+    <polygon fill="currentColor" fill-rule="evenodd" points="938.3 416.89 910.89 416.89 911.25 427.26 912.05 437.54 913.19 447.84 914.56 458.25 905.82 453.1 896.92 448.4 887.84 444.1 878.58 440.13 869.19 467.57 880.1 470.64 891.03 473.36 908.7 477.46 899.32 486.59 894.19 491.65 889.2 496.81 884.28 502.07 879.39 507.45 902.76 525.75 908.37 516.86 913.84 507.94 919.18 498.95 924.4 489.86 945.1 524.79 968.84 509.05 957.53 495.67 941.54 477.41 981.26 469.74 973.13 441.72 964.48 445.18 956.03 448.76 947.71 452.47 939.45 456.34 934.13 458.6 937.49 430.56 937.83 427.14 938.05 423.75 938.3 416.89"></polygon>
+  </symbol>
 </svg>
 
 <section id="s-signin" aria-label="Sign in">
@@ -77,6 +81,29 @@ try {
   var t=null; try{ t=localStorage.getItem("aster-theme"); }catch(e){}
   if(!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", t);
+})();
+(function(){
+  var overlay = document.getElementById("pageload");
+  if(!overlay) return;
+  var timer = null;
+  function arm(){ timer = setTimeout(function(){ overlay.classList.add("show"); }, 150); }
+  document.addEventListener("submit", function(e){
+    if(e.defaultPrevented) return;
+    arm();
+  });
+  document.addEventListener("click", function(e){
+    if(e.defaultPrevented || e.button !== 0) return;
+    if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest && e.target.closest("a[href]");
+    if(!a || a.target === "_blank" || a.hasAttribute("download")) return;
+    var url; try{ url = new URL(a.href, location.href); }catch(err){ return; }
+    if(url.origin !== location.origin) return;
+    arm();
+  });
+  window.addEventListener("pageshow", function(){
+    if(timer) clearTimeout(timer);
+    overlay.classList.remove("show");
+  });
 })();
 </script>
 </body>
