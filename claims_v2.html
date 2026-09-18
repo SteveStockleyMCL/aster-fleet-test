@@ -1,0 +1,85 @@
+{% extends "base_v2.html" %}
+{% block title %}Claims{% endblock %}
+{% block content %}
+<section aria-label="Claims detail">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:52px">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><span class="cap" style="color:var(--ink)">Claims</span></div>
+      <h1 class="d2" style="font-size:clamp(26px,3.2vw,40px);max-width:840px">{{ data.totals.currentPY }} incurred is &pound;{{ '{:,.0f}'.format(data.totals.totalIncurred) }} across {{ data.totals.totalClaims }} claims on the schedule.</h1>
+      <p class="lede" style="max-width:760px">Loss ratio has {{ 'risen' if data.totals.currentLR and data.totals.priorLR and data.totals.currentLR > data.totals.priorLR else 'moved' }} from <span class="num">{{ '%.1f'|format(data.totals.priorLR) if data.totals.priorLR is not none else '—' }}%</span> in {{ data.totals.priorPY }} to <span class="num">{{ '%.1f'|format(data.totals.currentLR) if data.totals.currentLR is not none else '—' }}%</span> in {{ data.totals.currentPY }}, against a {{ '%.0f'|format(data.lossRatio.target) }}% target. Average cost per claim is <span class="num">&pound;{{ '{:,.0f}'.format(data.totals.avgCost) }}</span>.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <hr class="rule">
+      <div id="filters" style="display:flex;align-items:center;flex-wrap:wrap;gap:24px"></div>
+      <hr class="rule">
+    </div>
+
+    <div class="grid2" style="--cols:708px minmax(0,1fr);align-items:start">
+      <div>
+        <h2 class="h2">Loss ratio by policy year</h2><p class="sm" style="margin:4px 0 14px">Incurred against pro-rata earned premium</p>
+        <div class="scrollx" id="lossWrap"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:22px;padding-top:30px">
+        <div class="num" style="font-size:clamp(44px,5vw,62px);font-weight:800;letter-spacing:-.035em;line-height:1">{{ '%.0f'|format(data.totals.currentLR) if data.totals.currentLR is not none else '—' }}%</div>
+        <p class="lede">{{ data.totals.currentPY }} loss ratio against a {{ '%.0f'|format(data.lossRatio.target) }}% target, on {{ data.totals.totalClaims }} claims totalling &pound;{{ '{:,.0f}'.format(data.totals.totalIncurred) }} incurred.</p>
+        <hr class="rule">
+        <div><p class="cap" style="margin-bottom:10px">Claims notified each month, trailing 12 months</p><div id="sparkWrap"></div></div>
+      </div>
+    </div>
+
+    <div class="grid2" style="--cols:minmax(0,1.25fr) minmax(0,1fr);align-items:start">
+      <div>
+        <h2 class="h2">What is causing them</h2><p class="sm" style="margin:4px 0 20px">Trainable causes &mdash; substantially within a driver&rsquo;s control &mdash; against everything else.</p>
+        <div id="causeBars" style="display:flex;flex-direction:column;gap:13px"></div>
+        <div style="display:flex;gap:24px;padding-top:18px;flex-wrap:wrap">
+          <span class="sm" style="display:inline-flex;align-items:center;gap:8px"><span class="sw" style="background:var(--c1)"></span>Trainable</span>
+          <span class="sm" style="display:inline-flex;align-items:center;gap:8px"><span class="sw" style="background:var(--c4)"></span>Largely outside the driver&rsquo;s control</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:40px">
+        <div>
+          <h2 class="h2">Who was at fault</h2><p class="sm" style="margin:4px 0 20px">Fault and split claims are the ones an insurer prices on.</p>
+          <div id="faultBars" style="display:flex;flex-direction:column;gap:16px"></div>
+        </div>
+        <div>
+          <h2 class="h2">Where they stand</h2>
+          <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;margin-top:20px">
+            <div id="donutWrap" style="flex:0 0 auto"></div>
+            <div id="donutLegend" style="display:flex;flex-direction:column;gap:12px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;flex-wrap:wrap">
+        <div><h2 class="h2">Claims notified per week</h2><p class="sm" style="margin-top:4px">Sixteen weeks to {{ data.asOf }}.</p></div>
+        <a class="more" href="{{ url_for('driver_v2') }}">See which drivers are flagged<svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+      </div>
+      <div class="scrollx" id="weeklyWrap"></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;flex-wrap:wrap">
+        <div><h2 class="h2">The register</h2><p class="sm" style="margin-top:4px">Sortable by any column. Open a row for the reserve breakdown.</p></div>
+        <div class="sm num" id="regCount"></div>
+      </div>
+      <div class="scrollx"><table class="tbl" id="reg" style="min-width:980px"></table></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:6px">
+        <div class="sm num" id="pageInfo"></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap" id="pager"></div>
+      </div>
+    </div>
+
+    <div><hr class="rule"><p class="sm" style="padding-top:20px;max-width:900px"><strong style="color:var(--ink)">Real claims data</strong> from the {{ data.client }} database, {{ data.totals.totalClaims }} claims as at {{ data.asOf }}. The current policy year is a part year and should not be compared with completed years without that adjustment.</p></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/v2-common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-claims.js') }}"></script>
+<script>
+V2ClaimsInit({{ data|tojson }});
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base_v2.html" %}
+{% set d = data.driver %}
+{% block title %}{{ d.name }}{% endblock %}
+{% block content %}
+<section aria-label="Driver risk profile">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:52px">
+
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div class="sm" style="display:flex;gap:8px;flex-wrap:wrap"><a href="{{ url_for('driver_v2') }}">Driver risk</a><span>/</span><span>{{ d.depot }}</span><span>/</span><span class="cap" style="color:var(--ink)">{{ d.name }}</span></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:40px;flex-wrap:wrap">
+        <div style="display:flex;gap:22px;align-items:flex-start;flex:1 1 420px;min-width:0">
+          <div class="num" style="width:68px;height:68px;flex:0 0 auto;border-radius:10px;background:var(--ink);color:var(--ground);display:grid;place-items:center;font-size:23px;font-weight:700" aria-hidden="true">{{ d.name.split(' ')|map('first')|join('')|upper }}</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <h1 style="font-size:clamp(28px,3.4vw,38px);line-height:1.1;font-weight:800;letter-spacing:-.026em">{{ d.name }}</h1>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+              <span class="pill" style="background:var(--sel);color:var(--linkh)">{{ d.role }}</span>
+              <span class="pill">{{ d.depot }} depot</span>
+              <span class="pill">{{ d.service }} with the operator</span>
+              <span class="pill">{{ d.licence }}, {{ d.points }} points</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span class="pill" style="background:var(--ground);border:1px solid var(--line2);color:var(--ink3)">Sample data</span>
+          {% if data.prevDriver %}<a class="btn2" style="text-decoration:none" href="{{ url_for('driver_v2', depot=data.prevDriver.depot, slug=data.prevDriver.slug) }}">Previous</a>{% endif %}
+          {% if data.nextDriver %}<a class="btn2" style="text-decoration:none" href="{{ url_for('driver_v2', depot=data.nextDriver.depot, slug=data.nextDriver.slug) }}">Next driver</a>{% endif %}
+        </div>
+      </div>
+      <hr class="rule">
+      <p class="sm" style="max-width:700px">Driver-level detail is illustrative sample data &mdash; the real database tracks vehicles and claims at depot level, with no telematics feed and no drivers table yet. It mirrors what Aster<span style="color:var(--red)">*</span> would surface once one is connected.</p>
+    </div>
+
+    <!-- recommendation -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <svg width="16" height="16" style="color:var(--red)" aria-hidden="true"><use href="#mk"></use></svg>
+        <div class="cap" style="color:var(--ink)">Recommended action</div>
+        <span style="flex:1 1 auto"></span>
+        <span class="pill" style="background:var(--ground);border:1px solid var(--line2);color:var(--ink3)">Advisory</span>
+      </div>
+      <div class="grid2" style="--cols:minmax(0,1fr) 420px;margin-top:30px">
+        <div style="display:flex;flex-direction:column;gap:22px">
+          <h2 style="font-size:clamp(24px,2.6vw,34px);line-height:1.22;font-weight:800;letter-spacing:-.024em">{{ d.actions[0] }}</h2>
+          <p class="lede">{{ d.blurb }}</p>
+          <div class="grid4" style="gap:22px;padding:20px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+            <div><div class="cap">Combined risk score</div><div class="bdy num" style="font-weight:600;margin-top:4px">{{ d.score }}</div></div>
+            <div><div class="cap">Fleet rank</div><div class="bdy num" style="font-weight:600;margin-top:4px">{{ data.fleetRank }} of {{ data.fleetTotal }}</div></div>
+            <div><div class="cap">Depot rank</div><div class="bdy num" style="font-weight:600;margin-top:4px">{{ data.depotRank }} of {{ data.depotTotal }}</div></div>
+            <div><div class="cap">Licence points</div><div class="bdy num" style="font-weight:600;margin-top:4px">{{ d.points }}</div></div>
+          </div>
+          {% if d.actions|length > 1 %}
+          <div>
+            <div class="cap">Also recommended</div>
+            <p class="bdy" style="color:var(--ink2);margin-top:6px">{{ d.actions[1] }}</p>
+          </div>
+          {% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between"><div class="cap">Proportionate response</div><div class="sm num">Step {{ data.stepIndex + 1 }} of {{ data.ladder|length }}</div></div>
+          <ol class="ladder">
+            {% for step in data.ladder %}
+            <li>
+              <div class="col"><span class="knob {{ 'now' if loop.index0 == data.stepIndex else ('next' if loop.index0 > data.stepIndex else '') }}"></span>{% if not loop.last %}<span class="stem"></span>{% endif %}</div>
+              <div class="body"{% if loop.index0 == data.stepIndex %} style="flex:1 1 auto"{% endif %}>
+                {% if loop.index0 == data.stepIndex %}
+                <div style="background:var(--ground);border-radius:10px;padding:16px 18px">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><div class="h2">{{ step }}</div><span class="sm" style="font-weight:700;color:var(--linkh)">Recommended now</span></div>
+                  <p class="sm" style="color:var(--ink2);margin-top:6px">{{ d.actions[0] }}</p>
+                </div>
+                {% else %}
+                <div class="bdy" style="font-weight:600;color:var(--ink2)">{{ step }}</div>
+                {% if loop.index0 < data.stepIndex %}<div class="sm">Already passed</div>{% else %}<div class="sm">Only if the position does not improve. {{ 'Requires HR and a documented capability process.' if loop.last else '' }}</div>{% endif %}
+                {% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+      </div>
+      <p class="sm" style="border-top:1px solid var(--line);padding-top:22px;margin-top:30px;max-width:1000px;line-height:1.7"><strong style="color:var(--ink)">Advisory only.</strong> Aster<span style="color:var(--red)">*</span> does not make employment decisions. Any change to duties or engagement requires HR review, and the driver has a right to see this assessment and respond to it before a decision is taken.</p>
+    </div>
+
+    <!-- score -->
+    <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start">
+      <div style="flex:0 0 260px;display:flex;flex-direction:column;gap:12px">
+        <div class="cap">Combined risk score</div>
+        <div style="display:flex;align-items:flex-end;gap:16px">
+          <div class="num" style="font-size:88px;font-weight:800;letter-spacing:-.04em;line-height:.86">{{ d.score }}</div>
+          <div style="padding-bottom:6px;display:flex;flex-direction:column;gap:8px"><span class="pill {{ 'hi' if d.tier == 'high' else '' }}">{{ data.tierLabel }}</span></div>
+        </div>
+        <div class="sm num">Sum of the four telematics measures below</div>
+      </div>
+      <div style="flex:1 1 380px;max-width:460px" id="markWrap"></div>
+      <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:baseline;gap:14px"><span class="num" style="flex:0 0 52px;font-size:22px;font-weight:800">{{ data.fleetPercentile }}th</span><span class="bdy" style="color:var(--ink2)">percentile of the {{ data.fleetTotal }} sample drivers across the fleet</span></div>
+        <div style="display:flex;align-items:baseline;gap:14px"><span class="num" style="flex:0 0 52px;font-size:22px;font-weight:800">{{ data.depotRank }}{{ 'st' if data.depotRank == 1 else ('nd' if data.depotRank == 2 else 'th') }}</span><span class="bdy" style="color:var(--ink2)">of {{ data.depotTotal }} sample drivers at {{ d.depot }}</span></div>
+      </div>
+    </div>
+
+    <!-- factors -->
+    <div class="grid2" style="--cols:460px minmax(0,1fr);align-items:start">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div><h2 class="h2">Where the {{ d.score }} comes from</h2><p class="sm" style="margin-top:4px">Spoke length is each measure&rsquo;s value. The dashed line is the fleet average across all sample drivers.</p></div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <span class="sm" style="display:inline-flex;align-items:center;gap:9px"><span style="width:20px;border-top:1.5px dashed var(--ink3);flex:0 0 auto"></span>The fleet average, for comparison</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:26px">
+        {% for k, v in d.metrics.items() %}
+        <div class="frow" style="padding:9px 0{{ ';border-bottom:1px solid var(--line)' if not loop.last else '' }}">
+          <div class="bdy">{{ k }}</div>
+          <div class="sm num">median {{ '%.0f'|format(data.fleetAvg[k]) }}</div>
+          <div class="bdy num" style="text-align:right;font-weight:700{{ ';color:var(--alert)' if v > data.fleetAvg[k] else '' }}">{{ v }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- peers -->
+    <div>
+      <h2 class="h2">Against the other sample drivers</h2><p class="sm" style="margin:4px 0 20px">Percentile within the {{ data.fleetTotal }} illustrative driver profiles across every depot.</p>
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:640px">
+        {% for k, v in d.metrics.items() %}
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span class="bdy" style="font-weight:600">{{ k }}</span><span class="sm num">{{ data.metricPercentiles[k] }}th percentile</span></div>
+          <div class="trk" style="height:18px"><i style="height:18px;border-radius:3px;background:{{ 'var(--c1)' if data.metricPercentiles[k] >= 75 else '#9cc4d9' }};width:{{ data.metricPercentiles[k] }}%;display:block"></i></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div><hr class="rule"><p class="sm" style="padding-top:20px;max-width:900px"><strong style="color:var(--ink)">Sample data.</strong> {{ d.name }} is one of twelve illustrative driver profiles used to preview this screen. Nothing here describes a real individual, and no real telematics record has been used.</p></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/v2-common.js') }}"></script>
+<script>
+(function(){
+  var metrics = {{ d.metrics|tojson }};
+  var avg = {{ data.fleetAvg|tojson }};
+  var keys = Object.keys(metrics);
+  var angles = [0, 90, 180, 270];
+  var classes = ["sp-fleet","sp-ins","sp-claim","sp-drv"];
+  var maxAbs = Math.max.apply(null, keys.map(function(k){ return Math.max(metrics[k], avg[k]); })) * 1.15;
+  var domains = keys.map(function(k, i){
+    return {key:k, label:k, ang:angles[i], pts:metrics[k], med:avg[k], cls:classes[i]};
+  });
+  V2.renderMark(document.getElementById('markWrap'), domains, maxAbs);
+})();
+</script>
+{% endblock %}
