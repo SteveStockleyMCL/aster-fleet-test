@@ -21,6 +21,7 @@ try {
 {% block extra_head %}{% endblock %}
 </head>
 <body>
+<div id="pageload" aria-hidden="true"><svg class="pageload-mark" viewBox="869 416 113 110"><use href="#mk"></use></svg></div>
 <div class="previewbar">Design preview &middot; real Acme Fleet Services data, concept layout &mdash; <a href="{{ url_for('overview') }}">back to the live build</a></div>
 
 <svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
@@ -64,10 +65,16 @@ try {
   </label>
   <span style="flex:1 1 auto"></span>
   <span class="asat num">{{ v2_as_of }}</span>
+  {% if renewal_days is not none %}
+  <span class="pill" style="white-space:nowrap{{ ';color:var(--alert);background:rgba(194,21,31,.1)' if renewal_days <= 30 else '' }}">Days to renewal <span class="num" style="font-weight:800">{{ renewal_days }}</span></span>
+  {% endif %}
+  <a class="btn2" href="{{ url_for('new_vehicle') }}" style="text-decoration:none;min-height:36px;padding:8px 16px;font-size:13px;white-space:nowrap">Vehicle changes</a>
+  <a class="btn" href="{{ url_for('new_claim') }}" style="text-decoration:none;min-height:36px;padding:8px 16px;font-size:13px;white-space:nowrap"><svg class="ic" style="width:13px;height:13px" aria-hidden="true"><use href="#i-msg"></use></svg>New claim</a>
   <div class="seg" role="group" aria-label="Theme">
     <button type="button" id="tLight" aria-pressed="true" aria-label="Light theme"><svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-sun"></use></svg></button>
     <button type="button" id="tDark" aria-pressed="false" aria-label="Dark theme"><svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-moon"></use></svg></button>
   </div>
+  <a href="{{ url_for('logout') }}" class="sm" style="color:var(--ink2);white-space:nowrap">Log out</a>
   <button class="avatar num" type="button" aria-label="Your account">{{ session.get('username', 'SS')[:2]|upper if session.get('username') else 'SS' }}</button>
 </header>
 
@@ -77,8 +84,10 @@ try {
     <a href="{{ url_for('driver_v2') }}" data-tab="driver"><svg class="dot" aria-hidden="true"><use href="#mk"></use></svg>Driver risk</a>
     <a href="{{ url_for('claims_v2') }}" data-tab="claims"><svg class="dot" aria-hidden="true"><use href="#mk"></use></svg>Claims</a>
     <hr class="rule" style="margin:16px 0 16px 22px">
-    <a href="{{ url_for('login_v2') }}" data-tab="signin"><svg class="dot" aria-hidden="true"><use href="#mk"></use></svg>Sign-in screen</a>
-    <a href="{{ url_for('explorer') }}">Data feeds<span class="tag num">4 of 5</span></a>
+    <a href="{{ url_for('portfolio') }}">Portfolio</a>
+    <a href="{{ url_for('performance') }}">Fleet Performance</a>
+    <a href="{{ url_for('explorer') }}">Explorer<span class="tag num">4 of 5</span></a>
+    <a href="{{ url_for('roadmap') }}">Roadmap</a>
   </nav>
 
   <main class="main">
@@ -106,6 +115,26 @@ $("#tDark").addEventListener("click",function(){setTheme("dark")});
   var here = "{{ v2_active }}";
   Array.prototype.forEach.call(document.querySelectorAll(".rail a[data-tab]"), function(a){
     if(a.dataset.tab === here) a.setAttribute("aria-current","page");
+  });
+})();
+(function(){
+  var overlay = document.getElementById("pageload");
+  if(!overlay) return;
+  var timer = null;
+  document.addEventListener("click", function(e){
+    if(e.defaultPrevented || e.button !== 0) return;
+    if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest && e.target.closest("a[href]");
+    if(!a || a.target === "_blank" || a.hasAttribute("download")) return;
+    if(a.href.indexOf("#") !== -1 && a.pathname === location.pathname && a.search === location.search) return;
+    var url; try{ url = new URL(a.href, location.href); }catch(err){ return; }
+    if(url.origin !== location.origin) return;
+    // Small delay so a fast navigation never flashes the overlay.
+    timer = setTimeout(function(){ overlay.classList.add("show"); }, 150);
+  });
+  window.addEventListener("pageshow", function(){
+    if(timer) clearTimeout(timer);
+    overlay.classList.remove("show");
   });
 })();
 </script>
