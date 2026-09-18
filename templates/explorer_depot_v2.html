@@ -1,0 +1,63 @@
+{% extends "base_v2.html" %}
+{% block title %}{{ depot }} · Explorer{% endblock %}
+{% block content %}
+<section aria-label="{{ depot }}">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:32px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><a href="{{ url_for('explorer_v2') }}">Explorer</a><span>/</span><span class="cap" style="color:var(--ink)">{{ depot }}</span></div>
+        <h1 class="d2">{{ depot }}</h1>
+        <p class="sm">{{ vehicles|length }} vehicles on cover &middot; {{ claims_stats.claims }} claims recorded</p>
+      </div>
+      <div style="display:flex;gap:32px">
+        <div><div class="cap">Incurred</div><div class="num" style="font-size:22px;font-weight:800;margin-top:6px">&pound;{{ "{:,.0f}".format(claims_stats.incurred) }}</div></div>
+        <div><div class="cap">Open claims</div><div class="num" style="font-size:22px;font-weight:800;margin-top:6px">{{ claims_stats.open }}</div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <a class="chip" {% if tab=='vehicles' %}aria-current="page" style="text-decoration:none;border-color:var(--link);background:var(--sel);color:var(--linkh)"{% else %}style="text-decoration:none"{% endif %} href="{{ url_for('explorer_depot_v2', depot=depot, tab='vehicles') }}">Vehicles</a>
+      <a class="chip" {% if tab=='drivers' %}aria-current="page" style="text-decoration:none;border-color:var(--link);background:var(--sel);color:var(--linkh)"{% else %}style="text-decoration:none"{% endif %} href="{{ url_for('explorer_depot_v2', depot=depot, tab='drivers') }}">Drivers</a>
+    </div>
+
+    {% if tab == 'drivers' %}
+    <div class="notice info">Illustrative only &mdash; sample driver profiles showing what this view will surface once a telematics provider is connected. Not real people or real behaviour data.</div>
+    <div class="card">
+      {% for d in drivers %}
+      <div class="drow" style="padding:22px 0{{ ';border-top:1px solid var(--line)' if not loop.first else '' }}">
+        <div class="pill {{ 'hi' if d.tier == 'high' else '' }}" style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:15px">{{ d.name.split('.')[-1].strip()[:1]|upper }}</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <a class="h2" href="{{ url_for('driver_v2', depot=depot, slug=d.slug) }}">{{ d.name }}</a>
+          <div class="sm">{{ d.role }} &middot; {{ d.service }} service</div>
+        </div>
+        <p class="bdy" style="color:var(--ink2)">{{ d.blurb }}</p>
+        <div style="text-align:right"><a class="more" href="{{ url_for('driver_v2', depot=depot, slug=d.slug) }}">Open profile<svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-arrow"></use></svg></a></div>
+      </div>
+      {% else %}
+      <p class="sm" style="padding:24px 0">No sample drivers configured for this depot yet.</p>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="scrollx">
+      <table class="tbl" style="min-width:760px">
+        <thead><tr><th>Registration</th><th>Category</th><th>Make and model</th><th>On cover since</th><th>Notes</th><th></th></tr></thead>
+        <tbody>
+          {% for v in vehicles %}
+          <tr>
+            <td class="num" style="font-weight:700;color:var(--ink)">{{ v.reg }}</td>
+            <td>{{ v.category }}</td>
+            <td>{{ (v.make + ' ' + v.model) if v.make else v.model }}</td>
+            <td class="num">{{ v.cover_start }}</td>
+            <td>{{ v.notes or '—' }}</td>
+            <td class="r"><a class="btn3" style="text-decoration:none;padding:0;min-height:0" href="{{ url_for('explorer_vehicle_v2', depot=depot, vehicle_id=v.id) }}">View</a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="sm" style="padding:24px 0">No vehicles on cover at this depot.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

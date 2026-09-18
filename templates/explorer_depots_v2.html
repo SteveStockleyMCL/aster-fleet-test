@@ -1,0 +1,32 @@
+{% extends "base_v2.html" %}
+{% block title %}Explorer{% endblock %}
+{% block content %}
+<section aria-label="Explorer">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:32px">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><span class="cap" style="color:var(--ink)">Explorer</span></div>
+      <h1 class="d2" style="max-width:820px">Depot by depot &mdash; vehicles, claims and, once telematics is connected, the drivers behind them.</h1>
+      <p class="lede" style="max-width:700px">Click into a depot to see its vehicle schedule. <strong style="color:var(--ink)">Depot and vehicle figures below are real</strong>; driver detail is an illustrative preview of where this is heading.</p>
+    </div>
+
+    <div class="notice info">Depot vehicle counts and claims figures are real, from the same database as Portfolio and Claims. The sample-driver count on each card is illustrative &mdash; open a depot for detail.</div>
+
+    <div class="grid3">
+      {% for d in depots %}
+      <a class="card depot-card" href="{{ url_for('explorer_depot_v2', depot=d.name) }}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <h2 class="h2">{{ d.name }}</h2>
+          <span class="cap" style="white-space:nowrap">{{ d.driver_count }} sample driver{{ 's' if d.driver_count != 1 else '' }}</span>
+        </div>
+        <div class="grid3" style="gap:16px;margin-top:20px">
+          <div><div class="cap">Vehicles</div><div class="num" style="font-size:20px;font-weight:800;margin-top:6px">{{ d.on_cover }}</div></div>
+          <div><div class="cap">Claims</div><div class="num" style="font-size:20px;font-weight:800;margin-top:6px">{{ d.claims }}</div></div>
+          <div><div class="cap">Incurred</div><div class="num" style="font-size:20px;font-weight:800;margin-top:6px">&pound;{{ "{:,.0f}".format(d.incurred) }}</div></div>
+        </div>
+        <div class="trk" style="margin-top:20px"><i style="width:{{ d.risk_pct }}%;background:{{ 'var(--alert)' if d.risk_pct >= 66 else ('var(--c2)' if d.risk_pct >= 33 else 'var(--good)') }}"></i></div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

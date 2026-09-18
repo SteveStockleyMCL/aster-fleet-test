@@ -53,7 +53,7 @@ def require_login():
     if request.endpoint in ("login", "static", "login_v2"):
         return
     if not session.get("authed"):
-        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2", "new_vehicle_v2", "new_claim_v2", "performance_v2"):
+        if request.endpoint in ("overview_v2", "claims_v2", "driver_v2", "portfolio_v2", "new_vehicle_v2", "new_claim_v2", "performance_v2", "explorer_v2", "explorer_depot_v2", "explorer_vehicle_v2"):
             return redirect(url_for("login_v2", next=request.path))
         return redirect(url_for("login", next=request.path))
 
@@ -1578,6 +1578,106 @@ def explorer_driver(depot, slug):
         return redirect(url_for("explorer_depot", depot=depot))
     return render_template(
         "explorer_driver.html", active_tab="explorer", depot=depot, driver=driver,
+    )
+
+
+@app.route("/explorer-v2")
+def explorer_v2():
+    conn = get_db()
+    depot_names = [r["depot"] for r in conn.execute(
+        "SELECT DISTINCT depot FROM vehicles ORDER BY depot"
+    ).fetchall()]
+
+    vehicle_rows = conn.execute(
+        """SELECT depot, COUNT(*) vehicle_count,
+           SUM(CASE WHEN status='On cover' THEN 1 ELSE 0 END) on_cover
+           FROM vehicles GROUP BY depot"""
+    ).fetchall()
+    vehicle_by_depot = {r["depot"]: r for r in vehicle_rows}
+
+    claim_rows = conn.execute(
+        """SELECT depot, COUNT(*) claims, COALESCE(SUM(incurred),0) incurred
+           FROM claims GROUP BY depot"""
+    ).fetchall()
+    claims_by_depot = {r["depot"]: r for r in claim_rows}
+    as_of = as_of_today(conn)
+    conn.close()
+
+    depots = []
+    max_freq = 0.0
+    for name in depot_names:
+        v = vehicle_by_depot.get(name)
+        c = claims_by_depot.get(name)
+        on_cover = v["on_cover"] if v else 0
+        claims = c["claims"] if c else 0
+        incurred = c["incurred"] if c else 0
+        freq = (claims / on_cover) if on_cover else 0
+        max_freq = max(max_freq, freq)
+        depots.append({
+            "name": name, "on_cover": on_cover, "claims": claims,
+            "incurred": incurred, "freq": freq,
+            "driver_count": len(SAMPLE_DRIVERS.get(name, [])),
+        })
+    for d in depots:
+        d["risk_pct"] = round((d["freq"] / max_freq) * 100) if max_freq else 0
+
+    return render_template(
+        "explorer_depots_v2.html", v2_active="explorer", v2_as_of=as_of.strftime("%d %b %Y"),
+        depots=depots,
+    )
+
+
+@app.route("/explorer-v2/<depot>")
+def explorer_depot_v2(depot):
+    conn = get_db()
+    vehicles = conn.execute(
+        "SELECT * FROM vehicles WHERE depot=? AND status='On cover' ORDER BY reg",
+        (depot,),
+    ).fetchall()
+    if not vehicles and not conn.execute(
+        "SELECT 1 FROM vehicles WHERE depot=? LIMIT 1", (depot,)
+    ).fetchone():
+        conn.close()
+        return redirect(url_for("explorer_v2"))
+
+    claims_stats = conn.execute(
+        """SELECT COUNT(*) claims, COALESCE(SUM(incurred),0) incurred,
+           SUM(CASE WHEN closed=0 THEN 1 ELSE 0 END) open
+           FROM claims WHERE depot=?""",
+        (depot,),
+    ).fetchone()
+    as_of = as_of_today(conn)
+    conn.close()
+
+    drivers = SAMPLE_DRIVERS.get(depot, [])
+    tab = request.args.get("tab", "vehicles")
+    return render_template(
+        "explorer_depot_v2.html", v2_active="explorer", v2_as_of=as_of.strftime("%d %b %Y"),
+        depot=depot, vehicles=vehicles, claims_stats=claims_stats, drivers=drivers, tab=tab,
+    )
+
+
+@app.route("/explorer-v2/<depot>/vehicle/<int:vehicle_id>")
+def explorer_vehicle_v2(depot, vehicle_id):
+    conn = get_db()
+    vehicle = conn.execute(
+        "SELECT * FROM vehicles WHERE id=? AND depot=?", (vehicle_id, depot)
+    ).fetchone()
+    if not vehicle:
+        conn.close()
+        return redirect(url_for("explorer_depot_v2", depot=depot))
+    related_claims = conn.execute(
+        """SELECT * FROM claims WHERE depot=? AND vehicle_type=?
+           ORDER BY loss_date DESC LIMIT 5""",
+        (depot, vehicle["category"]),
+    ).fetchall()
+    as_of = as_of_today(conn)
+    conn.close()
+
+    drivers = SAMPLE_DRIVERS.get(depot, [])[:2]
+    return render_template(
+        "explorer_vehicle_v2.html", v2_active="explorer", v2_as_of=as_of.strftime("%d %b %Y"),
+        depot=depot, vehicle=vehicle, related_claims=related_claims, drivers=drivers,
     )
 
 

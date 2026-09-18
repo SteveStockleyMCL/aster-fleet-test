@@ -1,0 +1,73 @@
+{% extends "base_v2.html" %}
+{% block title %}{{ vehicle.reg }} · Explorer{% endblock %}
+{% block content %}
+<section aria-label="{{ vehicle.reg }}">
+  <div class="wrap" style="padding-top:34px;display:flex;flex-direction:column;gap:32px">
+    <div class="sm" style="display:flex;gap:8px"><a href="{{ url_for('overview_v2') }}">Overview</a><span>/</span><a href="{{ url_for('explorer_v2') }}">Explorer</a><span>/</span><a href="{{ url_for('explorer_depot_v2', depot=depot) }}">{{ depot }}</a><span>/</span><span class="cap" style="color:var(--ink)">{{ vehicle.reg }}</span></div>
+
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap">
+        <div>
+          <div class="num" style="font-size:24px;font-weight:800">{{ vehicle.reg }}</div>
+          <div class="sm" style="margin-top:6px">{{ (vehicle.make + ' ' + vehicle.model) if vehicle.make else vehicle.model }} &middot; {{ vehicle.category }}</div>
+        </div>
+        <span class="pill {{ 'hi' if vehicle.status=='On cover' else '' }}">{{ vehicle.status }}</span>
+      </div>
+      <hr class="rule" style="margin:22px 0">
+      <div class="grid4">
+        <div><div class="cap">Depot</div><div class="bdy" style="margin-top:6px;font-weight:700">{{ vehicle.depot }}</div></div>
+        <div><div class="cap">On cover since</div><div class="bdy num" style="margin-top:6px;font-weight:700">{{ vehicle.cover_start }}</div></div>
+        <div><div class="cap">Year</div><div class="bdy num" style="margin-top:6px;font-weight:700">{{ vehicle.year or '—' }}</div></div>
+        <div><div class="cap">GVW</div><div class="bdy num" style="margin-top:6px;font-weight:700">{{ vehicle.gvw or '—' }}</div></div>
+        <div><div class="cap">Value</div><div class="bdy num" style="margin-top:6px;font-weight:700">{{ '£{:,.0f}'.format(vehicle.value) if vehicle.value else '—' }}</div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div>
+        <h2 class="h2">Claims recorded for this vehicle type at {{ depot }}</h2>
+        <p class="sm" style="margin-top:4px">Claims aren&rsquo;t yet linked to an individual vehicle in the database &mdash; these are the {{ vehicle.category|lower }} claims recorded at this depot, as the closest real match available today.</p>
+      </div>
+      <div class="scrollx">
+        <table class="tbl" style="min-width:600px">
+          <thead><tr><th>Reference</th><th>Loss date</th><th>Cause</th><th>Status</th><th class="r">Incurred</th></tr></thead>
+          <tbody>
+            {% for c in related_claims %}
+            <tr>
+              <td class="num" style="font-weight:700;color:var(--ink)">{{ c.ref }}</td>
+              <td class="num">{{ c.loss_date }}</td>
+              <td>{{ c.cause }}</td>
+              <td><span class="pill {{ 'hi' if c.closed else '' }}">{{ c.status }}</span></td>
+              <td class="r num">&pound;{{ "{:,.0f}".format(c.incurred) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="sm" style="padding:24px 0">No {{ vehicle.category|lower }} claims recorded at this depot.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if drivers %}
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h2 class="h2">Sample drivers at this depot</h2>
+        <p class="sm">Illustrative only &mdash; vehicles aren&rsquo;t yet linked to specific drivers. Shown here to preview that link once telematics data is connected.</p>
+      </div>
+      <hr class="rule" style="margin:20px 0 0">
+      {% for d in drivers %}
+      <div class="drow" style="padding:22px 0{{ ';border-top:1px solid var(--line)' if not loop.first else '' }}">
+        <div class="pill {{ 'hi' if d.tier == 'high' else '' }}" style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:15px">{{ d.name.split('.')[-1].strip()[:1]|upper }}</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <a class="h2" href="{{ url_for('driver_v2', depot=depot, slug=d.slug) }}">{{ d.name }}</a>
+          <div class="sm">{{ d.role }}</div>
+        </div>
+        <p class="bdy" style="color:var(--ink2)">{{ d.blurb }}</p>
+        <div style="text-align:right"><a class="more" href="{{ url_for('driver_v2', depot=depot, slug=d.slug) }}">Open profile<svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-arrow"></use></svg></a></div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
