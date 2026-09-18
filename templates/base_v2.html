@@ -74,7 +74,7 @@ try {
     <button type="button" id="tLight" aria-pressed="true" aria-label="Light theme"><svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-sun"></use></svg></button>
     <button type="button" id="tDark" aria-pressed="false" aria-label="Dark theme"><svg class="ic" style="width:14px;height:14px" aria-hidden="true"><use href="#i-moon"></use></svg></button>
   </div>
-  <a href="{{ url_for('logout') }}" class="sm" style="color:var(--ink2);white-space:nowrap">Log out</a>
+  <a href="{{ url_for('logout', v2=1) }}" class="sm" style="color:var(--ink2);white-space:nowrap">Log out</a>
   <button class="avatar num" type="button" aria-label="Your account">{{ session.get('username', 'SS')[:2]|upper if session.get('username') else 'SS' }}</button>
 </header>
 

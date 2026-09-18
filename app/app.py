@@ -40,6 +40,8 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
+    if request.args.get("v2"):
+        return redirect(url_for("login_v2"))
     return redirect(url_for("login"))
 
 
